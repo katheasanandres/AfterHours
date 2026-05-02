@@ -1,4 +1,3 @@
-// src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AuthPage from "./AuthPage";
 import Home     from "./Home";
@@ -14,16 +13,18 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public */}
         <Route path="/login"  element={<AuthPage />} />
-
-        {/* Protected */}
+        
         <Route path="/home" element={
           <PrivateRoute><Home /></PrivateRoute>
         } />
 
         <Route path="/profile" element={
           <PrivateRoute><Profile /></PrivateRoute>
+        } />
+
+        <Route path="/settings" element={
+          <PrivateRoute><Settings /></PrivateRoute>
         } />
 
         {/* Default redirect */}

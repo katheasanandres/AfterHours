@@ -1,1 +1,4 @@
 backend/service_account.json
+frontend/src/firebase.js
+frontend/package-lock.json
+frontend/package.json

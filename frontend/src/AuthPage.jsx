@@ -10,7 +10,7 @@ import {
 } from "firebase/auth";
 import "./AuthPage.css";
 
-/* ─── SVG Icons ─────────────────────────────────────────────────────────── */
+/* ₊˚ ✧ ━━━━⊱SVG Icons⊰━━━━ ✧ ₊˚ */
 const IconEye = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
     <path d="M1 9C1 9 4 3 9 3C14 3 17 9 17 9C17 9 14 15 9 15C4 15 1 9 1 9Z"
@@ -77,7 +77,7 @@ const IconGoogle = () => (
   </svg>
 );
 
-/* ─── Password strength helper ──────────────────────────────────────────── */
+/* ₊˚ ✧ ━━━━⊱Password strength helper⊰━━━━ ✧ ₊˚ */
 function getStrength(pw) {
   if (!pw) return { score: 0, label: "", color: "" };
   let score = 0;
@@ -95,7 +95,7 @@ function getStrength(pw) {
   return { score, ...map[score] };
 }
 
-/* ─── Reusable InputField ───────────────────────────────────────────────── */
+/* ₊˚ ✧ ━━━━⊱Reusable InputField⊰━━━━ ✧ ₊˚ */
 function InputField({ id, label, type, value, onChange, onBlur,
                       icon, error, placeholder, children }) {
   return (
@@ -126,7 +126,7 @@ function InputField({ id, label, type, value, onChange, onBlur,
   );
 }
 
-/* MAIN COMPONENT */
+/* MAIN COMPONENTS */
 export default function AuthPage() {
   const navigate = useNavigate();
 
@@ -148,7 +148,7 @@ export default function AuthPage() {
   /* entrance animation */
   useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
 
-  /* ── helpers ── */
+  /* ₊˚ ✧ ━━━━⊱helpers⊰━━━━ ✧ ₊˚ */
   function switchMode(m) {
     setMode(m);
     setForm({ displayName: "", email: "", password: "", confirm: "" });
@@ -208,7 +208,7 @@ export default function AuthPage() {
     return Object.values(errs).every(v => !v);
   }
 
-  /* ── Shared post-auth handler ─────────────────────────────────────────── */
+  /* ₊˚ ✧ ━━━━⊱Shared post-auth handler⊰━━━━ ✧ ₊˚ */
   async function onAuthSuccess(credential) {
     const idToken = await credential.user.getIdToken();
     sessionStorage.setItem("ah_token", idToken);
@@ -216,7 +216,7 @@ export default function AuthPage() {
     setTimeout(() => navigate("/home"), 1200);
   }
 
-  /* ── Email / Password submit ─────────────────────────────────────────── */
+  /* ₊˚ ✧ ━━━━⊱Email / Password submit⊰━━━━ ✧ ₊˚ */
   async function handleSubmit(e) {
     e.preventDefault();
 
@@ -265,7 +265,7 @@ export default function AuthPage() {
     }
   }
 
-  /* ── Google Sign-In ──────────────────────────────────────────────────── */
+  /* ₊˚ ✧ ━━━━⊱Google Sign-In⊰━━━━ ✧ ₊˚ */
   async function handleGoogleSignIn() {
     setGoogleLoad(true);
     setApiError("");
@@ -362,7 +362,7 @@ export default function AuthPage() {
           />
         </div>
 
-        {/* ── Success state ── */}
+        {/* ₊˚ ✧ ━━━━⊱Success state⊰━━━━ ✧ ₊˚ */}
         {success ? (
           <div className="auth-success" role="status">
             <div className="success-icon">
@@ -380,7 +380,7 @@ export default function AuthPage() {
 
         ) : (
 
-          /* ── Form ── */
+          /* ₊˚ ✧ ━━━━⊱Form⊰━━━━ ✧ ₊˚ */
           <form className="auth-form" onSubmit={handleSubmit} noValidate>
 
             {/* API error banner */}
@@ -391,7 +391,7 @@ export default function AuthPage() {
               </div>
             )}
 
-            {/* ── Google button ── */}
+            {/* ₊˚ ✧ ━━━━⊱Google button⊰━━━━ ✧ ₊˚ */}
             <button
               type="button"
               className={`google-btn ${googleLoad ? "google-btn--loading" : ""}`}
@@ -411,7 +411,7 @@ export default function AuthPage() {
               )}
             </button>
 
-            {/* ── Divider ── */}
+            {/* ₊˚ ✧ ━━━━⊱Divider⊰━━━━ ✧ ₊˚ */}
             <div className="auth-divider" aria-hidden="true">
               <span className="auth-divider-line" />
               <span className="auth-divider-text">or continue with email</span>
