@@ -2,6 +2,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AuthPage from "./AuthPage";
 import Home     from "./Home";
+import Profile  from "./Profile";
+import Settings from "./Settings";
 
 function PrivateRoute({ children }) {
   const token = sessionStorage.getItem("ah_token");
@@ -20,8 +22,12 @@ export default function App() {
           <PrivateRoute><Home /></PrivateRoute>
         } />
 
+        <Route path="/profile" element={
+          <PrivateRoute><Profile /></PrivateRoute>
+        } />
+
         {/* Default redirect */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </BrowserRouter>
   );

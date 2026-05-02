@@ -1,15 +1,16 @@
-import { auth } from "./firebase";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { auth } from "./firebase";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "firebase/auth";
-
-import { useState, useEffect } from "react";
 import "./AuthPage.css";
 
-/* ─── tiny inline SVG icons (no extra dep) ─────────────────────────────── */
+/* ─── SVG Icons ─────────────────────────────────────────────────────────── */
 const IconEye = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
     <path d="M1 9C1 9 4 3 9 3C14 3 17 9 17 9C17 9 14 15 9 15C4 15 1 9 1 9Z"
@@ -57,36 +58,44 @@ const IconAlert = () => (
     <circle cx="8" cy="10.5" r="0.7" fill="currentColor"/>
   </svg>
 );
-const IconCheck = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-    <circle cx="7" cy="7" r="6" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.2"/>
-    <path d="M4.5 7L6 8.5L9.5 5.5" stroke="currentColor" strokeWidth="1.3"
-      strokeLinecap="round" strokeLinejoin="round"/>
+
+/* Google "G" logo */
+const IconGoogle = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+    <path
+      d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908C16.658 14.013 17.64 11.705 17.64 9.2Z"
+      fill="#4285F4"/>
+    <path
+      d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z"
+      fill="#34A853"/>
+    <path
+      d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z"
+      fill="#FBBC05"/>
+    <path
+      d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58Z"
+      fill="#EA4335"/>
   </svg>
 );
-const navigate = useNavigate();
-setSuccess(true);
-setTimeout(() => navigate("/home"), 1200);
 
-/* ─── password strength helper ──────────────────────────────────────────── */
+/* ─── Password strength helper ──────────────────────────────────────────── */
 function getStrength(pw) {
   if (!pw) return { score: 0, label: "", color: "" };
   let score = 0;
-  if (pw.length >= 8)          score++;
-  if (/[A-Z]/.test(pw))       score++;
-  if (/[0-9]/.test(pw))       score++;
+  if (pw.length >= 8)           score++;
+  if (/[A-Z]/.test(pw))        score++;
+  if (/[0-9]/.test(pw))        score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;
   const map = [
-    { label: "",         color: "" },
-    { label: "Weak",     color: "var(--red)" },
-    { label: "Fair",     color: "var(--amber)" },
-    { label: "Good",     color: "var(--amber)" },
-    { label: "Strong",   color: "var(--green)" },
+    { label: "",       color: "" },
+    { label: "Weak",   color: "var(--red)" },
+    { label: "Fair",   color: "var(--amber)" },
+    { label: "Good",   color: "var(--amber)" },
+    { label: "Strong", color: "var(--green)" },
   ];
   return { score, ...map[score] };
 }
 
-/* ─── reusable input field ──────────────────────────────────────────────── */
+/* ─── Reusable InputField ───────────────────────────────────────────────── */
 function InputField({ id, label, type, value, onChange, onBlur,
                       icon, error, placeholder, children }) {
   return (
@@ -96,6 +105,7 @@ function InputField({ id, label, type, value, onChange, onBlur,
         <span className="field-icon">{icon}</span>
         <input
           id={id}
+          name={id}
           className="field-input"
           type={type}
           value={value}
@@ -116,29 +126,29 @@ function InputField({ id, label, type, value, onChange, onBlur,
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   MAIN COMPONENT
-═══════════════════════════════════════════════════════════════════════════ */
+/* MAIN COMPONENT */
 export default function AuthPage() {
-  const [mode, setMode]           = useState("login");   // "login" | "signup"
-  const [mounted, setMounted]     = useState(false);
-  const [loading, setLoading]     = useState(false);
-  const [success, setSuccess]     = useState(false);
-  const [apiError, setApiError]   = useState("");
-  const [showPw, setShowPw]       = useState(false);
-  const [showPw2, setShowPw2]     = useState(false);
+  const navigate = useNavigate();
 
-  /* form state */
+  const [mode,       setMode]       = useState("login");
+  const [mounted,    setMounted]    = useState(false);
+  const [loading,    setLoading]    = useState(false);
+  const [googleLoad, setGoogleLoad] = useState(false);
+  const [success,    setSuccess]    = useState(false);
+  const [apiError,   setApiError]   = useState("");
+  const [showPw,     setShowPw]     = useState(false);
+  const [showPw2,    setShowPw2]    = useState(false);
+
   const [form, setForm] = useState({
-    displayName: "", email: "", password: "", confirm: ""
+    displayName: "", email: "", password: "", confirm: "",
   });
   const [touched, setTouched] = useState({});
-  const [errors, setErrors]   = useState({});
+  const [errors,  setErrors]  = useState({});
 
-  /* mount animation trigger */
+  /* entrance animation */
   useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
 
-  /* reset form on mode switch */
+  /* ── helpers ── */
   function switchMode(m) {
     setMode(m);
     setForm({ displayName: "", email: "", password: "", confirm: "" });
@@ -150,11 +160,9 @@ export default function AuthPage() {
     setShowPw2(false);
   }
 
-  /* field update */
   function handleChange(e) {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: value }));
-    // clear error on type
     if (errors[name]) setErrors(er => ({ ...er, [name]: "" }));
     setApiError("");
   }
@@ -165,10 +173,8 @@ export default function AuthPage() {
     validate({ ...form, [name]: form[name] }, name);
   }
 
-  /* validation */
   function validate(data, field) {
     const errs = { ...errors };
-
     const check = (f) => {
       switch (f) {
         case "displayName":
@@ -190,7 +196,6 @@ export default function AuthPage() {
         default: break;
       }
     };
-
     if (field) {
       check(field);
     } else {
@@ -199,78 +204,123 @@ export default function AuthPage() {
         : ["email", "password"];
       fields.forEach(check);
     }
-
     setErrors(errs);
     return Object.values(errs).every(v => !v);
   }
 
-  /* submit */
-  try {
-  let userCredential;
-
-  if (mode === "signup") {
-    // 1. Create the account
-    userCredential = createUserWithEmailAndPassword(
-      auth,
-      form.email,
-      form.password
-    );
-    // 2. Set the display name
-    await updateProfile(userCredential.user, {
-      displayName: form.displayName,
-    });
-  } else {
-    // Login
-    userCredential = await signInWithEmailAndPassword(
-      auth,
-      form.email,
-      form.password
-    );
+  /* ── Shared post-auth handler ─────────────────────────────────────────── */
+  async function onAuthSuccess(credential) {
+    const idToken = await credential.user.getIdToken();
+    sessionStorage.setItem("ah_token", idToken);
+    setSuccess(true);
+    setTimeout(() => navigate("/home"), 1200);
   }
 
-  // 3. Get the ID token — attach this to Flask API calls later
-  const idToken = await userCredential.user.getIdToken();
-  sessionStorage.setItem("ah_token", idToken);
+  /* ── Email / Password submit ─────────────────────────────────────────── */
+  async function handleSubmit(e) {
+    e.preventDefault();
 
-  setSuccess(true);
-  // TODO: navigate("/map")
+    const allTouched = mode === "signup"
+      ? { displayName: true, email: true, password: true, confirm: true }
+      : { email: true, password: true };
+    setTouched(allTouched);
 
-} catch (err) {
-  // Map Firebase error codes to readable messages
-  const messages = {
-    "auth/email-already-in-use":   "An account with this email already exists.",
-    "auth/invalid-email":          "Please enter a valid email address.",
-    "auth/weak-password":          "Password must be at least 6 characters.",
-    "auth/user-not-found":         "No account found with this email.",
-    "auth/wrong-password":         "Incorrect password. Please try again.",
-    "auth/invalid-credential":     "Invalid email or password.",
-    "auth/too-many-requests":      "Too many attempts. Try again later.",
-    "auth/network-request-failed": "Network error. Check your connection.",
-  };
-  setApiError(messages[err.code] || "Something went wrong. Please try again.");
-}
+    if (!validate(form, null)) return;
 
-  const strength = getStrength(form.password);
-  const isLogin  = mode === "login";
+    setLoading(true);
+    setApiError("");
+
+    try {
+      let credential;
+
+      if (mode === "signup") {
+        credential = await createUserWithEmailAndPassword(
+          auth, form.email, form.password
+        );
+        await updateProfile(credential.user, {
+          displayName: form.displayName,
+        });
+      } else {
+        credential = await signInWithEmailAndPassword(
+          auth, form.email, form.password
+        );
+      }
+
+      await onAuthSuccess(credential);
+
+    } catch (err) {
+      const messages = {
+        "auth/email-already-in-use":   "An account with this email already exists.",
+        "auth/invalid-email":          "Please enter a valid email address.",
+        "auth/weak-password":          "Password must be at least 6 characters.",
+        "auth/user-not-found":         "No account found with this email.",
+        "auth/wrong-password":         "Incorrect password. Please try again.",
+        "auth/invalid-credential":     "Invalid email or password.",
+        "auth/too-many-requests":      "Too many attempts. Try again later.",
+        "auth/network-request-failed": "Network error. Check your connection.",
+      };
+      setApiError(messages[err.code] || "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /* ── Google Sign-In ──────────────────────────────────────────────────── */
+  async function handleGoogleSignIn() {
+    setGoogleLoad(true);
+    setApiError("");
+
+    try {
+      const provider = new GoogleAuthProvider();
+      // Force account picker
+      provider.setCustomParameters({ prompt: "select_account" });
+
+      const credential = await signInWithPopup(auth, provider);
+      await onAuthSuccess(credential);
+
+    } catch (err) {
+      if (
+        err.code === "auth/popup-closed-by-user" ||
+        err.code === "auth/cancelled-popup-request"
+      ) {
+        setGoogleLoad(false);
+        return;
+      }
+      const messages = {
+        "auth/popup-blocked":
+          "Popup was blocked. Please allow popups for this site and try again.",
+        "auth/account-exists-with-different-credential":
+          "An account already exists with this email. Try signing in with email & password.",
+        "auth/network-request-failed":
+          "Network error. Please check your connection.",
+      };
+      setApiError(messages[err.code] || "Google sign-in failed. Please try again.");
+    } finally {
+      setGoogleLoad(false);
+    }
+  }
+
+  const strength    = getStrength(form.password);
+  const isLogin     = mode === "login";
+  const anyLoading  = loading || googleLoad;
 
   return (
     <div className={`auth-root ${mounted ? "auth-root--in" : ""}`}>
 
-      {/* ── animated city grid background ── */}
+      {/* Background */}
       <div className="auth-bg" aria-hidden="true">
         <div className="bg-grid" />
         <div className="bg-glow bg-glow--1" />
         <div className="bg-glow bg-glow--2" />
         <div className="bg-glow bg-glow--3" />
-        {/* floating orbs */}
         <div className="orb orb--1" />
         <div className="orb orb--2" />
       </div>
 
-      {/* ── card ── */}
+      {/* Card */}
       <main className="auth-card" role="main">
 
-        {/* logo + wordmark */}
+        {/* Logo */}
         <div className="auth-logo">
           <div className="logo-mark" aria-hidden="true">
             <span className="logo-ring logo-ring--outer" />
@@ -283,14 +333,12 @@ export default function AuthPage() {
           </div>
         </div>
 
-        {/* tagline */}
+        {/* Tagline */}
         <p className="auth-tagline">
-          {isLogin
-            ? "Stay aware. Stay safe."
-            : "Join the safety network."}
+          {isLogin ? "Stay aware. Stay safe." : "Join AfterHours!"}
         </p>
 
-        {/* mode tabs */}
+        {/* Mode tabs */}
         <div className="auth-tabs" role="tablist">
           <button
             role="tab"
@@ -308,12 +356,13 @@ export default function AuthPage() {
           >
             Create Account
           </button>
-          <span className="auth-tab-indicator" style={{
-            transform: `translateX(${isLogin ? "0%" : "100%"})`
-          }} />
+          <span
+            className="auth-tab-indicator"
+            style={{ transform: `translateX(${isLogin ? "0%" : "100%"})` }}
+          />
         </div>
 
-        {/* ── success state ── */}
+        {/* ── Success state ── */}
         {success ? (
           <div className="auth-success" role="status">
             <div className="success-icon">
@@ -326,168 +375,197 @@ export default function AuthPage() {
             <p className="success-title">
               {isLogin ? "Welcome back!" : "Account created!"}
             </p>
-            <p className="success-sub">Redirecting to the map…</p>
+            <p className="success-sub">Redirecting…</p>
           </div>
+
         ) : (
 
-        /* ── form ── */
-        <form className="auth-form" onSubmit={handleSubmit} noValidate>
+          /* ── Form ── */
+          <form className="auth-form" onSubmit={handleSubmit} noValidate>
 
-          {/* API-level error banner */}
-          {apiError && (
-            <div className="api-error" role="alert">
-              <IconAlert />
-              <span>{apiError}</span>
-            </div>
-          )}
+            {/* API error banner */}
+            {apiError && (
+              <div className="api-error" role="alert">
+                <IconAlert />
+                <span>{apiError}</span>
+              </div>
+            )}
 
-          {/* Display name — signup only */}
-          {!isLogin && (
-            <InputField
-              id="displayName"
-              label="Display Name"
-              type="text"
-              value={form.displayName}
-              onChange={e => handleChange({ target: { name: "displayName", value: e.target.value }})}
-              onBlur={e => handleBlur({ target: { name: "displayName" }})}
-              icon={<IconUser />}
-              error={touched.displayName ? errors.displayName : ""}
-              placeholder="How should we call you?"
-            />
-          )}
-
-          {/* Email */}
-          <InputField
-            id="email"
-            label="Email"
-            type="email"
-            value={form.email}
-            onChange={e => handleChange({ target: { name: "email", value: e.target.value }})}
-            onBlur={e => handleBlur({ target: { name: "email" }})}
-            icon={<IconMail />}
-            error={touched.email ? errors.email : ""}
-            placeholder="you@email.com"
-          />
-
-          {/* Password */}
-          <InputField
-            id="password"
-            label="Password"
-            type={showPw ? "text" : "password"}
-            value={form.password}
-            onChange={e => handleChange({ target: { name: "password", value: e.target.value }})}
-            onBlur={e => handleBlur({ target: { name: "password" }})}
-            icon={<IconLock />}
-            error={touched.password ? errors.password : ""}
-            placeholder={isLogin ? "Your password" : "Min. 8 characters"}
-          >
+            {/* ── Google button ── */}
             <button
               type="button"
-              className="pw-toggle"
-              onClick={() => setShowPw(v => !v)}
-              aria-label={showPw ? "Hide password" : "Show password"}
+              className={`google-btn ${googleLoad ? "google-btn--loading" : ""}`}
+              onClick={handleGoogleSignIn}
+              disabled={anyLoading}
             >
-              {showPw ? <IconEyeOff /> : <IconEye />}
-            </button>
-          </InputField>
-
-          {/* Password strength bar — signup only */}
-          {!isLogin && form.password && (
-            <div className="strength-wrap" aria-label={`Password strength: ${strength.label}`}>
-              <div className="strength-bars">
-                {[1,2,3,4].map(n => (
-                  <div
-                    key={n}
-                    className="strength-bar"
-                    style={{
-                      background: n <= strength.score ? strength.color : "var(--surface3)"
-                    }}
-                  />
-                ))}
-              </div>
-              {strength.label && (
-                <span className="strength-label" style={{ color: strength.color }}>
-                  {strength.label}
-                </span>
+              {googleLoad ? (
+                <>
+                  <span className="spinner spinner--dark" aria-hidden="true" />
+                  <span>Connecting…</span>
+                </>
+              ) : (
+                <>
+                  <IconGoogle />
+                  <span>Continue with Google</span>
+                </>
               )}
-            </div>
-          )}
+            </button>
 
-          {/* Confirm password — signup only */}
-          {!isLogin && (
+            {/* ── Divider ── */}
+            <div className="auth-divider" aria-hidden="true">
+              <span className="auth-divider-line" />
+              <span className="auth-divider-text">or continue with email</span>
+              <span className="auth-divider-line" />
+            </div>
+
+            {/* Display name — signup only */}
+            {!isLogin && (
+              <InputField
+                id="displayName"
+                label="Display Name"
+                type="text"
+                value={form.displayName}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                icon={<IconUser />}
+                error={touched.displayName ? errors.displayName : ""}
+                placeholder="How should we call you?"
+              />
+            )}
+
+            {/* Email */}
             <InputField
-              id="confirm"
-              label="Confirm Password"
-              type={showPw2 ? "text" : "password"}
-              value={form.confirm}
-              onChange={e => handleChange({ target: { name: "confirm", value: e.target.value }})}
-              onBlur={e => handleBlur({ target: { name: "confirm" }})}
+              id="email"
+              label="Email"
+              type="email"
+              value={form.email}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              icon={<IconMail />}
+              error={touched.email ? errors.email : ""}
+              placeholder="you@email.com"
+            />
+
+            {/* Password */}
+            <InputField
+              id="password"
+              label="Password"
+              type={showPw ? "text" : "password"}
+              value={form.password}
+              onChange={handleChange}
+              onBlur={handleBlur}
               icon={<IconLock />}
-              error={touched.confirm ? errors.confirm : ""}
-              placeholder="Repeat your password"
+              error={touched.password ? errors.password : ""}
+              placeholder={isLogin ? "Your password" : "Min. 8 characters"}
             >
               <button
                 type="button"
                 className="pw-toggle"
-                onClick={() => setShowPw2(v => !v)}
-                aria-label={showPw2 ? "Hide confirm password" : "Show confirm password"}
+                onClick={() => setShowPw(v => !v)}
+                aria-label={showPw ? "Hide password" : "Show password"}
               >
-                {showPw2 ? <IconEyeOff /> : <IconEye />}
+                {showPw ? <IconEyeOff /> : <IconEye />}
               </button>
             </InputField>
-          )}
 
-          {/* Forgot password — login only */}
-          {isLogin && (
-            <div className="forgot-wrap">
-              <button type="button" className="forgot-btn">
-                Forgot password?
-              </button>
-            </div>
-          )}
-
-          {/* Submit */}
-          <button
-            type="submit"
-            className={`submit-btn ${loading ? "submit-btn--loading" : ""}`}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <span className="spinner" aria-hidden="true" />
-                <span>{isLogin ? "Signing in…" : "Creating account…"}</span>
-              </>
-            ) : (
-              isLogin ? "Sign In" : "Create Account"
+            {/* Password strength — signup only */}
+            {!isLogin && form.password && (
+              <div className="strength-wrap" aria-label={`Password strength: ${strength.label}`}>
+                <div className="strength-bars">
+                  {[1, 2, 3, 4].map(n => (
+                    <div
+                      key={n}
+                      className="strength-bar"
+                      style={{
+                        background: n <= strength.score
+                          ? strength.color
+                          : "var(--surface3)",
+                      }}
+                    />
+                  ))}
+                </div>
+                {strength.label && (
+                  <span className="strength-label" style={{ color: strength.color }}>
+                    {strength.label}
+                  </span>
+                )}
+              </div>
             )}
-          </button>
 
-          {/* Anonymous pill */}
-          <div className="anon-notice">
-            <IconShield />
-            <span>No personal data stored · Anonymous by default</span>
-          </div>
+            {/* Confirm password — signup only */}
+            {!isLogin && (
+              <InputField
+                id="confirm"
+                label="Confirm Password"
+                type={showPw2 ? "text" : "password"}
+                value={form.confirm}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                icon={<IconLock />}
+                error={touched.confirm ? errors.confirm : ""}
+                placeholder="Repeat your password"
+              >
+                <button
+                  type="button"
+                  className="pw-toggle"
+                  onClick={() => setShowPw2(v => !v)}
+                  aria-label={showPw2 ? "Hide password" : "Show password"}
+                >
+                  {showPw2 ? <IconEyeOff /> : <IconEye />}
+                </button>
+              </InputField>
+            )}
 
-          {/* Sign up nudge */}
-          <p className="mode-switch">
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
+            {/* Forgot password — login only */}
+            {isLogin && (
+              <div className="forgot-wrap">
+                <button type="button" className="forgot-btn">
+                  Forgot password?
+                </button>
+              </div>
+            )}
+
+            {/* Submit */}
             <button
-              type="button"
-              className="mode-switch-btn"
-              onClick={() => switchMode(isLogin ? "signup" : "login")}
+              type="submit"
+              className={`submit-btn ${loading ? "submit-btn--loading" : ""}`}
+              disabled={anyLoading}
             >
-              {isLogin ? "Create one" : "Sign in"}
+              {loading ? (
+                <>
+                  <span className="spinner" aria-hidden="true" />
+                  <span>{isLogin ? "Signing in…" : "Creating account…"}</span>
+                </>
+              ) : (
+                isLogin ? "Sign In" : "Create Account"
+              )}
             </button>
-          </p>
 
-        </form>
+            {/* Anon notice */}
+            <div className="anon-notice">
+              <IconShield />
+              <span>No personal data stored · Anonymous by default</span>
+            </div>
+
+            {/* Mode switch */}
+            <p className="mode-switch">
+              {isLogin ? "Don't have an account? " : "Already have an account? "}
+              <button
+                type="button"
+                className="mode-switch-btn"
+                onClick={() => switchMode(isLogin ? "signup" : "login")}
+              >
+                {isLogin ? "Create one" : "Sign in"}
+              </button>
+            </p>
+
+          </form>
         )}
 
       </main>
 
-      {/* bottom attribution */}
       <footer className="auth-footer">
-        <span>AfterHours · Stay safe, always.</span>
+        <span>AfterHours · Stay aware, stay safe.</span>
       </footer>
     </div>
   );
