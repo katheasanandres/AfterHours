@@ -1,0 +1,218 @@
+:root {
+  /* AfterHours Color Palette */
+  --bg-deep: #0d1117;
+  --bg-card: #161b22;
+  --accent-orange: #ff7b29;
+  --danger-red: #da3633;
+  --warning-yellow: #d29922;
+  --text-main: #f0f6fc;
+  --text-muted: #8b949e;
+  --border-subtle: #30363d;
+}
+
+.home-container {
+  background-color: var(--bg-deep);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: var(--text-main);
+  font-family: 'Inter', -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+/* --- Header Section --- */
+.home-header {
+  padding: 45px 20px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(to bottom, var(--bg-deep), transparent);
+  z-index: 10;
+}
+
+.logo-text { 
+  font-size: 22px; 
+  font-weight: 800; 
+  letter-spacing: -0.5px;
+}
+
+.logo-text span { color: var(--accent-orange); }
+
+.time-pill {
+  background: rgba(48, 54, 61, 0.8);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-subtle);
+}
+
+.time-pill .dot {
+  width: 6px;
+  height: 6px;
+  background: var(--accent-orange);
+  border-radius: 50%;
+}
+
+/* --- Map View Area --- */
+.map-view {
+  flex: 1;
+  position: relative;
+  /* Dark Map Grid Effect */
+  background-color: #0b0e14;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.alert-banner {
+  margin: 15px;
+  background: rgba(218, 54, 51, 0.12);
+  border: 1px solid rgba(218, 54, 51, 0.4);
+  padding: 14px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.alert-content strong { display: block; font-size: 14px; color: #ff7b72; }
+.alert-content p { font-size: 11px; color: var(--text-muted); margin: 4px 0 0; }
+
+.legend-box {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: var(--bg-card);
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  font-size: 11px;
+}
+
+.legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.legend-item .dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot.high { background: var(--danger-red); box-shadow: 0 0 8px var(--danger-red); }
+.dot.mid { background: var(--warning-yellow); }
+.dot.safe { background: #238636; }
+
+/* --- Bottom Action Sheet --- */
+.action-sheet {
+  background: var(--bg-card);
+  border-radius: 28px 28px 0 0;
+  padding: 12px 20px 100px;
+  border-top: 1px solid var(--border-subtle);
+  box-shadow: 0 -10px 30px rgba(0,0,0,0.4);
+}
+
+.handle {
+  width: 36px;
+  height: 4px;
+  background: #30363d;
+  margin: 0 auto 15px;
+  border-radius: 2px;
+}
+
+.vibe-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.vibe-title { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+
+.risk-score {
+  color: var(--accent-orange);
+  background: rgba(255, 123, 41, 0.1);
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--accent-orange);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.tags-container { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+
+.tag {
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tag.danger { border: 1px solid #6e2121; color: #ff7b72; background: rgba(248, 81, 73, 0.15); }
+.tag.warning { border: 1px solid #7d5e12; color: #e3b341; background: rgba(187, 128, 9, 0.15); }
+.tag.neutral { border: 1px solid #30363d; color: var(--text-muted); background: #21262d; }
+
+.action-buttons { display: flex; gap: 12px; }
+
+.report-main-btn {
+  flex: 1;
+  background: #f0f6fc;
+  color: #0d1117;
+  border: none;
+  padding: 16px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.square-icon-btn {
+  width: 56px;
+  height: 56px;
+  background: #21262d;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  color: var(--text-main);
+  font-size: 20px;
+}
+
+/* --- Navigation Bar --- */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  padding: 12px 0 32px;
+  background: var(--bg-deep);
+  border-top: 1px solid var(--border-subtle);
+  backdrop-filter: blur(10px);
+}
+
+/* Ensure the Leaflet container stays behind your UI overlays */
+.leaflet-container {
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+}
+
+/* Ensure your UI overlays stay on top */
+.alert-banner, .user-location-dot, .legend-box {
+  z-index: 1000 !important;
+}
+
+/* Clean up the logout button style */
+.logout-btn {
+  background: none;
+  border: 1px solid #30363d;
+  color: #8b949e;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.nav-item { color: var(--text-muted); text-align: center; cursor: pointer; }
+.nav-item.active { color: var(--accent-orange); }
+.nav-icon { display: block; font-size: 22px; margin-bottom: 4px; }
+.nav-label { font-size: 10px; font-weight: 600; }
