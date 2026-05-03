@@ -1,18 +1,3 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   AfterHours — Home.css
-   Shares the same CSS custom properties defined in AuthPage.css / index.css.
-   Import order in main.jsx: index.css → AuthPage.css (sets :root vars) → Home.css
-═══════════════════════════════════════════════════════════════════════════ */
-
-/* ─── PAGE LAYOUT ───────────────────────────────────────────────────────── */
-/*
-  Full-screen mobile layout:
-  ┌──────────────┐  ← header        (fixed height)
-  │   MAP AREA   │  ← flex: 1       (fills remaining space)
-  ├──────────────┤  ← bottom sheet  (fixed height)
-  └──────────────┘  ← bottom nav    (fixed, sits over content)
-*/
-
 .home-root {
   display: flex;
   flex-direction: column;
@@ -29,17 +14,17 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 48px 18px 14px;   /* top padding accounts for mobile status bar */
+  padding: 48px 18px 14px;   
   background: linear-gradient(to bottom, var(--bg) 60%, transparent);
-  position: absolute;        /* float over the map */
+  position: absolute;        
   top: 0;
   left: 0;
   right: 0;
   z-index: 400;
-  pointer-events: none;      /* let map touches pass through the transparent area */
+  pointer-events: none;  
 }
 
-/* re-enable pointer events only on interactive children */
+/* re-enable pointer events for header children (logo, GPS status, logout) */
 .home-header > * {
   pointer-events: auto;
 }
@@ -141,10 +126,10 @@
   z-index: 1;
 }
 
-/* ── Alert banner (floats over map) ─────────────────────────────── */
+/* ── Alert banner ─────────────────────────────── */
 .alert-banner {
   position: absolute;
-  top: 88px;          /* clears the floating header */
+  top: 88px;          
   left: 12px;
   right: 12px;
   z-index: 500;
@@ -204,7 +189,7 @@
 }
 .alert-banner__close:hover { color: var(--txt); }
 
-/* ── Risk legend (bottom-right of map) ──────────────────────────── */
+/* ── Risk legend ──────────────────────────── */
 .map-legend {
   position: absolute;
   bottom: 16px;
@@ -239,7 +224,7 @@
 .map-legend__dot--mid  { background: var(--amber); }
 .map-legend__dot--safe { background: var(--green); }
 
-/* ── User location dot (rendered via Leaflet divIcon) ────────────── */
+/* ── User location dot ────────────── */
 .user-dot {
   width: 14px;
   height: 14px;
@@ -449,7 +434,6 @@
 }
 
 /* ─── LEAFLET OVERRIDES ─────────────────────────────────────────────────── */
-/* Push Leaflet attribution to not overlap with the bottom sheet */
 .leaflet-bottom.leaflet-right {
   bottom: 4px;
   right: 4px;
@@ -464,7 +448,6 @@
 
 /* ─── RESPONSIVE ────────────────────────────────────────────────────────── */
 @media (min-width: 480px) {
-  /* On larger screens, cap width and center like a mobile app */
   .home-root {
     max-width: 430px;
     margin: 0 auto;
