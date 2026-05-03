@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signOut } from 'firebase/auth';
-import { auth, db } from './firebase';
+import { db } from './firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -163,12 +162,6 @@ export default function Home() {
   function handleNav(key) {
     setActiveNav(key);
     if (key !== 'map') navigate(`/${key}`);
-  }
-
-  // ── Logout ────────────────────────────────────────────────────────────
-  async function handleLogout() {
-    await signOut(auth);
-    navigate('/login');
   }
 
   /* ── JSX ── */

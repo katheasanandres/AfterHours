@@ -22,7 +22,6 @@ export function useLocation() {
   useEffect(() => {
     if (!navigator.geolocation) {
       // Wrap in setTimeout so setState is never called synchronously
-      // inside the effect body — satisfies react-hooks/set-state-in-effect
       const t = setTimeout(() => {
         setError('Geolocation is not supported by your browser.');
         setLoading(false);

@@ -618,7 +618,6 @@ body {
   background: #f5f5f5;
 }
 
-/* dark spinner variant for use on white Google button */
 .spinner--dark {
   border-color: rgba(0,0,0,0.15);
   border-top-color: #1f1f1f;
