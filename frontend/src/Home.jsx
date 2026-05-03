@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from './firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -61,6 +61,16 @@ function UserDot({ position }) {
   return null;
 }
 
+/**
+ * Exposes the Leaflet map instance to the parent via a ref.
+ * Parent calls mapRef.current.flyTo([lat, lng]) to re-center.
+ */
+function MapController({ mapRef }) {
+  const map = useMap();
+  useEffect(() => { mapRef.current = map; }, [map, mapRef]);
+  return null;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    NAV ICONS
 ═══════════════════════════════════════════════════════════════════════════ */
@@ -114,38 +124,131 @@ export default function Home() {
   const [currentTime,  setCurrentTime]  = useState('');
   const [reportOpen,   setReportOpen]   = useState(false);
 
+  // Ref to the Leaflet map instance — used by the re-center button
+  const mapRef = useRef(null);
+
   // ── Real GPS coords from the custom hook ──────────────────────────────
   const { coords, error: locationError, loading: locationLoading } = useLocation();
 
-  // Use live coords if available, fall back to Olongapo City center
   const mapCenter = coords
     ? [coords.lat, coords.lng]
     : [14.8348, 120.2821];
 
   // ── Real-time heatmap data from Firestore ─────────────────────────────
-  // Replaces the old static heatPoints array.
-  // Listens to the "reports" collection and maps urgency → intensity.
   const [heatPoints, setHeatPoints] = useState([]);
+  const [allReports, setAllReports] = useState([]); // raw docs for vibe calc
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'reports'), (snapshot) => {
-      const points = [];
+      const points  = [];
+      const reports = [];
+
       snapshot.forEach(doc => {
         const d = doc.data();
-        // Only plot reports that have a valid location
+        reports.push(d);
         if (d.location?.lat && d.location?.lng) {
-          const intensity = { high: 1.0, moderate: 0.55, low: 0.25 }[d.urgency] ?? 0.4;
+          // Use effective_urgency (NLP-adjusted) if available, else fall back
+          const urgency  = d.effective_urgency ?? d.urgency ?? 'low';
+          const intensity = { high: 1.0, moderate: 0.55, low: 0.25 }[urgency] ?? 0.4;
           points.push([d.location.lat, d.location.lng, intensity]);
         }
       });
+
       setHeatPoints(points);
+      setAllReports(reports);
     });
 
-    // Unsubscribe from Firestore listener when component unmounts
     return () => unsub();
   }, []);
 
-  // ── Live clock (updates every minute) ────────────────────────────────
+  // ── Dynamic area vibe ──────────────────────────────────────────────────
+  // Calculates a risk score and dominant tags from reports within ~500m
+  // of the user. Falls back to all reports if coords unavailable.
+  const areaVibe = useCallback(() => {
+    if (!allReports.length) return null;
+
+    // Filter to reports within ~500m (roughly 0.005 degrees lat/lng)
+    const RADIUS = 0.005;
+    const nearby = coords
+      ? allReports.filter(r =>
+          r.location?.lat && r.location?.lng &&
+          Math.abs(r.location.lat - coords.lat) < RADIUS &&
+          Math.abs(r.location.lng - coords.lng) < RADIUS
+        )
+      : allReports;
+
+    const pool = nearby.length > 0 ? nearby : allReports;
+
+    // Risk score: weighted average of effective_urgency values (0–10 scale)
+    const weights = { high: 10, moderate: 5.5, low: 2.5 };
+    const total   = pool.reduce((sum, r) => {
+      const u = r.effective_urgency ?? r.urgency ?? 'low';
+      return sum + (weights[u] ?? 2.5);
+    }, 0);
+    const score = (total / pool.length).toFixed(1);
+
+    // Dominant categories — top 3 most reported
+    const catCount = {};
+    pool.forEach(r => {
+      const cat = r.ai_category ?? r.category ?? 'other';
+      catCount[cat] = (catCount[cat] ?? 0) + 1;
+    });
+    const topCats = Object.entries(catCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([cat]) => cat);
+
+    // Overall urgency level for the score badge color
+    const highCount = pool.filter(r =>
+      (r.effective_urgency ?? r.urgency) === 'high').length;
+    const modCount  = pool.filter(r =>
+      (r.effective_urgency ?? r.urgency) === 'moderate').length;
+    const level = highCount > pool.length * 0.4 ? 'high'
+                : modCount  > pool.length * 0.4 ? 'moderate'
+                : 'low';
+
+    return { score, topCats, level, count: pool.length };
+  }, [allReports, coords]);
+
+  const vibe = areaVibe();
+
+  // Human-readable category labels
+  const CAT_LABELS = {
+    poor_lighting:         'Poor lighting',
+    loitering:             'Loitering',
+    catcalling:            'Harassment',
+    broken_infrastructure: 'Broken infra',
+    unsafe_vehicle:        'Unsafe vehicle',
+    no_bystanders:         'Isolated area',
+    other:                 'Other',
+  };
+
+  // Tag color by category type
+  const CAT_TAG_COLOR = {
+    poor_lighting:         'tag--amber',
+    loitering:             'tag--red',
+    catcalling:            'tag--red',
+    broken_infrastructure: 'tag--amber',
+    unsafe_vehicle:        'tag--red',
+    no_bystanders:         'tag--gray',
+    other:                 'tag--gray',
+  };
+
+  // Score badge class
+  const SCORE_CLASS = {
+    high:     'vibe-row__score--high',
+    moderate: 'vibe-row__score--mid',
+    low:      'vibe-row__score--safe',
+  };
+
+  // ── Re-center button ───────────────────────────────────────────────────
+  function handleRecenter() {
+    if (mapRef.current && coords) {
+      mapRef.current.flyTo([coords.lat, coords.lng], 16, { duration: 1.2 });
+    }
+  }
+
+  // ── Live clock ─────────────────────────────────────────────────────────
   useEffect(() => {
     function tick() {
       const now = new Date();
@@ -158,7 +261,7 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
-  // ── Navigation handler ────────────────────────────────────────────────
+  // ── Navigation handler ─────────────────────────────────────────────────
   function handleNav(key) {
     setActiveNav(key);
     if (key !== 'map') navigate(`/${key}`);
@@ -207,6 +310,7 @@ export default function Home() {
           />
           <HeatmapLayer points={heatPoints} />
           <UserDot position={mapCenter} />
+          <MapController mapRef={mapRef} />
         </MapContainer>
 
         {/* Floating alert banner */}
@@ -258,14 +362,26 @@ export default function Home() {
 
         <div className="vibe-row">
           <span className="vibe-row__label">Area vibe now</span>
-          <span className="vibe-row__score">7.1 / 10 risk</span>
+          {vibe ? (
+            <span className={`vibe-row__score ${SCORE_CLASS[vibe.level]}`}>
+              {vibe.score} / 10 risk
+            </span>
+          ) : (
+            <span className="vibe-row__score vibe-row__score--empty">
+              No reports yet
+            </span>
+          )}
         </div>
 
         <div className="tag-row">
-          <span className="tag tag--red">Poor lighting</span>
-          <span className="tag tag--red">Loitering</span>
-          <span className="tag tag--amber">Isolated path</span>
-          <span className="tag tag--gray">{heatPoints.length} reports</span>
+          {vibe?.topCats.map(cat => (
+            <span key={cat} className={`tag ${CAT_TAG_COLOR[cat] ?? 'tag--gray'}`}>
+              {CAT_LABELS[cat] ?? cat}
+            </span>
+          ))}
+          <span className="tag tag--gray">
+            {vibe ? `${vibe.count} report${vibe.count !== 1 ? 's' : ''}` : '0 reports'}
+          </span>
         </div>
 
         <div className="action-row">
@@ -279,7 +395,12 @@ export default function Home() {
             Report Incident
           </button>
 
-          <button className="btn-icon" aria-label="Re-center map">
+          <button
+            className="btn-icon"
+            onClick={handleRecenter}
+            aria-label="Re-center map on my location"
+            title={coords ? 'Re-center on my location' : 'Location unavailable'}
+          >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
               <circle cx="9" cy="9" r="3" stroke="currentColor" strokeWidth="1.3"/>
               <line x1="9" y1="1" x2="9" y2="4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
@@ -288,8 +409,6 @@ export default function Home() {
               <line x1="14" y1="9" x2="17" y2="9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
             </svg>
           </button>
-
-
         </div>
       </div>
 
