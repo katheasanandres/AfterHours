@@ -1,40 +1,47 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export function useLocation() {
   const [coords,  setCoords]  = useState(null);  // { lat, lng }
   const [error,   setError]   = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const onSuccess = useCallback((pos) => {
+    setCoords({
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+    });
+    setLoading(false);
+    setError(null);
+  }, []);
+
+  const onError = useCallback((err) => {
+    setError(err.message);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser.');
-      setLoading(false);
-      return;
+      // Wrap in setTimeout so setState is never called synchronously
+      // inside the effect body — satisfies react-hooks/set-state-in-effect
+      const t = setTimeout(() => {
+        setError('Geolocation is not supported by your browser.');
+        setLoading(false);
+      }, 0);
+      return () => clearTimeout(t);
     }
 
-    // keeps coords fresh as a user moves
     const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        setCoords({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        });
-        setLoading(false);
-        setError(null);
-      },
-      (err) => {
-        setError(err.message);
-        setLoading(false);
-      },
+      onSuccess,
+      onError,
       {
         enableHighAccuracy: true,
         timeout:            10000,
-        maximumAge:         30000,   // accept cached position up to 30s old
+        maximumAge:         30000,
       }
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
+  }, [onSuccess, onError]);
 
   return { coords, error, loading };
 }
