@@ -1,13 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { db } from './firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet.heat';
 import 'leaflet/dist/leaflet.css';
-import './Home.css';
-import ReportModal from './ReportModal';
 import { useLocation } from './hooks/useLocation';
+import ReportModal from './ReportModal';
+import './Home.css';
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAP SUB-COMPONENTS
+   These live outside Home() so they don't re-mount on every render.
+═══════════════════════════════════════════════════════════════════════════ */
+
+/** Renders the risk heatmap layer inside the Leaflet map context */
 function HeatmapLayer({ points }) {
   const map = useMap();
 
@@ -19,10 +27,10 @@ function HeatmapLayer({ points }) {
       blur:    18,
       maxZoom: 17,
       gradient: {
-        0.0: 'rgba(34,197,94,0)',   // transparent at zero
-        0.3: '#22C55E',             // green  — low risk
-        0.6: '#F59E0B',             // amber  — moderate
-        1.0: '#E03E2D',             // red    — high risk
+        0.0: 'rgba(34,197,94,0)',
+        0.3: '#22C55E',   // green  — low risk
+        0.6: '#F59E0B',   // amber  — moderate
+        1.0: '#E03E2D',   // red    — high risk
       },
     }).addTo(map);
 
@@ -32,7 +40,7 @@ function HeatmapLayer({ points }) {
   return null;
 }
 
-/** Blinking blue user-location dot - NOT CONNECTED TO LOCATION YET */
+/** Blinking blue dot at the user's real GPS position */
 function UserDot({ position }) {
   const map = useMap();
 
@@ -41,32 +49,30 @@ function UserDot({ position }) {
 
     const icon = L.divIcon({
       className: '',
-      html: `<div class="user-dot"><div class="user-dot__pulse"></div></div>`,
+      html: '<div class="user-dot"><div class="user-dot__pulse"></div></div>',
       iconSize:   [20, 20],
       iconAnchor: [10, 10],
     });
 
     const marker = L.marker(position, { icon, zIndexOffset: 1000 }).addTo(map);
-    return () => map.removeMarker?.(marker) ?? map.removeLayer(marker);
+    return () => map.removeLayer(marker);
   }, [map, position]);
 
   return null;
 }
 
-/* * ₊˚ ✧ ━━━━⊱SVG Nav Icons⊰━━━━ ✧ ₊˚ * */
-const NavIconMap      = ({ active }) => (
+/* ═══════════════════════════════════════════════════════════════════════════
+   NAV ICONS
+═══════════════════════════════════════════════════════════════════════════ */
+const NavIconMap = ({ active }) => (
   <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-    <rect x="2" y="2" width="7" height="7" rx="1.5"
-      fill={active ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
-    <rect x="13" y="2" width="7" height="7" rx="1.5"
-      fill={active ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
-    <rect x="2" y="13" width="7" height="7" rx="1.5"
-      fill={active ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
-    <rect x="13" y="13" width="7" height="7" rx="1.5"
-      fill={active ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
+    <rect x="2"  y="2"  width="7" height="7" rx="1.5" fill={active ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
+    <rect x="13" y="2"  width="7" height="7" rx="1.5" fill={active ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
+    <rect x="2"  y="13" width="7" height="7" rx="1.5" fill={active ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
+    <rect x="13" y="13" width="7" height="7" rx="1.5" fill={active ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
   </svg>
 );
-const NavIconReports  = ({ active }) => (
+const NavIconReports = ({ active }) => (
   <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
     <path d="M11 2C7.5 2 5 4.5 5 7.5C5 12 11 20 11 20C11 20 17 12 17 7.5C17 4.5 14.5 2 11 2Z"
       stroke={active ? 'var(--accent)' : 'rgba(255,255,255,0.35)'}
@@ -76,7 +82,7 @@ const NavIconReports  = ({ active }) => (
       strokeWidth="1.4"/>
   </svg>
 );
-const NavIconProfile  = ({ active }) => (
+const NavIconProfile = ({ active }) => (
   <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
     <circle cx="11" cy="8" r="4"
       stroke={active ? 'var(--accent)' : 'rgba(255,255,255,0.35)'}
@@ -97,20 +103,49 @@ const NavIconSettings = ({ active }) => (
   </svg>
 );
 
-/* MAIN COMPONENTS */
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+═══════════════════════════════════════════════════════════════════════════ */
 export default function Home() {
-  const navigate        = useNavigate();
-  const [activeNav, setActiveNav]     = useState('map');
+  const navigate = useNavigate();
+
+  const [activeNav,    setActiveNav]    = useState('map');
   const [alertVisible, setAlertVisible] = useState(true);
-  const [currentTime, setCurrentTime]  = useState('');
-  const [reportOpen, setReportOpen]     = useState(false);
+  const [currentTime,  setCurrentTime]  = useState('');
+  const [reportOpen,   setReportOpen]   = useState(false);
+
+  // ── Real GPS coords from the custom hook ──────────────────────────────
   const { coords, error: locationError, loading: locationLoading } = useLocation();
 
+  // Use live coords if available, fall back to Olongapo City center
   const mapCenter = coords
-  ? [coords.lat, coords.lng]
-  : [14.8348, 120.2821];
+    ? [coords.lat, coords.lng]
+    : [14.8348, 120.2821];
 
-  // Live clock 
+  // ── Real-time heatmap data from Firestore ─────────────────────────────
+  // Replaces the old static heatPoints array.
+  // Listens to the "reports" collection and maps urgency → intensity.
+  const [heatPoints, setHeatPoints] = useState([]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'reports'), (snapshot) => {
+      const points = [];
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        // Only plot reports that have a valid location
+        if (d.location?.lat && d.location?.lng) {
+          const intensity = { high: 1.0, moderate: 0.55, low: 0.25 }[d.urgency] ?? 0.4;
+          points.push([d.location.lat, d.location.lng, intensity]);
+        }
+      });
+      setHeatPoints(points);
+    });
+
+    // Unsubscribe from Firestore listener when component unmounts
+    return () => unsub();
+  }, []);
+
+  // ── Live clock (updates every minute) ────────────────────────────────
   useEffect(() => {
     function tick() {
       const now = new Date();
@@ -123,43 +158,33 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
-  // * ₊˚ ✧ ━━━━⊱Fake spatiotemporal data⊰━━━━ ✧ ₊˚ *
-  // Format: [lat, lng, intensity 0–1]
-  // to be replaced with real firestore data when backend is ready. Hindi pa kasi sya ready puta
-  const heatPoints = [
-    [14.8340, 120.2810, 1.0],   // high risk
-    [14.8343, 120.2815, 0.85],
-    [14.8350, 120.2830, 0.55],  // moderate
-    [14.8360, 120.2840, 0.3],   // low
-    [14.8370, 120.2855, 0.65],
-    [14.8330, 120.2800, 0.9],
-    [14.8380, 120.2860, 0.25],
-  ];
-
-  // * ₊˚ ✧ ━━━━⊱Nav handler⊰━━━━ ✧ ₊˚ *
+  // ── Navigation handler ────────────────────────────────────────────────
   function handleNav(key) {
     setActiveNav(key);
-    
-    if (key === 'profile') {
-      navigate('/profile');
-    } else if (key === 'map') {
-      navigate('/home');
-    } else if (key === 'settings') {
-      navigate('/settings'); 
-    }
+    if (key !== 'map') navigate(`/${key}`);
   }
 
   /* ── JSX ── */
   return (
     <div className="home-root">
 
-      {/* * ₊˚ ✧ ━━━━⊱HEADER⊰━━━━ ✧ ₊˚ * */}
+      {/* ── HEADER ──────────────────────────────────────────────────────── */}
       <header className="home-header">
-        <h1 className="home-logo">
-          After<span>Hours</span>
-        </h1>
+        <h1 className="home-logo">After<span>Hours</span></h1>
 
         <div className="header-right">
+          {/* show a subtle indicator if GPS is loading or errored */}
+          {locationLoading && (
+            <span className="location-status location-status--loading">
+              Locating…
+            </span>
+          )}
+          {locationError && !locationLoading && (
+            <span className="location-status location-status--error" title={locationError}>
+              📍 GPS off
+            </span>
+          )}
+
           <div className="time-chip">
             <span className="time-chip__dot" aria-hidden="true" />
             <span>{currentTime}</span>
@@ -167,7 +192,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* * ₊˚ ✧ ━━━━⊱MAP AREA⊰━━━━ ✧ ₊˚ * */}
+      {/* ── MAP AREA ────────────────────────────────────────────────────── */}
       <div className="map-area">
         <MapContainer
           center={mapCenter}
@@ -176,12 +201,10 @@ export default function Home() {
           attributionControl={false}
           style={{ height: '100%', width: '100%' }}
         >
-          {/* CartoDB Dark Matter tiles */}
           <TileLayer
             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
           />
-
           <HeatmapLayer points={heatPoints} />
           <UserDot position={mapCenter} />
         </MapContainer>
@@ -229,25 +252,22 @@ export default function Home() {
         </div>
       </div>
 
-      {/* * ₊˚ ✧ ━━━━⊱BOTTOM SHEET⊰━━━━ ✧ ₊˚ * */}
+      {/* ── BOTTOM SHEET ────────────────────────────────────────────────── */}
       <div className="bottom-sheet">
         <div className="bottom-sheet__handle" aria-hidden="true" />
 
-        {/* Vibe row */}
         <div className="vibe-row">
           <span className="vibe-row__label">Area vibe now</span>
           <span className="vibe-row__score">7.1 / 10 risk</span>
         </div>
 
-        {/* Tags */}
         <div className="tag-row">
           <span className="tag tag--red">Poor lighting</span>
           <span className="tag tag--red">Loitering</span>
           <span className="tag tag--amber">Isolated path</span>
-          <span className="tag tag--gray">31 reports</span>
+          <span className="tag tag--gray">{heatPoints.length} reports</span>
         </div>
 
-         {/* Action buttons */}
         <div className="action-row">
           <button className="btn-report" onClick={() => setReportOpen(true)}>
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
@@ -279,12 +299,12 @@ export default function Home() {
         </div>
       </div>
 
-      {/* * ₊˚ ✧ ━━━━⊱ BOTTOM NAV ⊰━━━━ ✧ ₊˚ * */}
+      {/* ── BOTTOM NAV ──────────────────────────────────────────────────── */}
       <nav className="bottom-nav" aria-label="Main navigation">
         {[
-          { key: 'map',      label: 'Map',      Icon: NavIconMap },
-          { key: 'reports',  label: 'Reports',  Icon: NavIconReports },
-          { key: 'profile',  label: 'Profile',  Icon: NavIconProfile },
+          { key: 'map',      label: 'Map',      Icon: NavIconMap      },
+          { key: 'reports',  label: 'Reports',  Icon: NavIconReports  },
+          { key: 'profile',  label: 'Profile',  Icon: NavIconProfile  },
           { key: 'settings', label: 'Settings', Icon: NavIconSettings },
         ].map(({ key, label, Icon }) => (
           <button
@@ -299,16 +319,14 @@ export default function Home() {
         ))}
       </nav>
 
-          {/* ── REPORT MODAL ────────────────────────────────────────────────── */}
-                {reportOpen && (
-                  <ReportModal
-                    onClose={() => setReportOpen(false)}
-                    userCoords={coords}
-                    />
-                                )}
+      {/* ── REPORT MODAL ────────────────────────────────────────────────── */}
+      {reportOpen && (
+        <ReportModal
+          onClose={() => setReportOpen(false)}
+          userCoords={coords}
+        />
+      )}
+
     </div>
   );
-
-  
-
 }
