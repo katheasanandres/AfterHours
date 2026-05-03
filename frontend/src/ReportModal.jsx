@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
-import { auth, db } from './firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { auth } from './firebase';
 import './ReportModal.css';
+
+// ✅ REMOVED: import { db } from './firebase'
+// ✅ REMOVED: import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
+//
+// Reports must go through Flask (/api/reports) so the NLP pipeline runs.
+// Flask verifies the token, runs analyze_report(), then writes to Firestore.
+// Writing directly from the frontend skips NLP entirely.
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ICONS
@@ -32,13 +38,13 @@ const IconShield = () => (
    CONSTANTS
 ═══════════════════════════════════════════════════════════════════════════ */
 const CATEGORIES = [
-  { id: 'poor_lighting',        emoji: '🔦', label: 'Poor Lighting',            type: 'environmental', color: 'amber' },
-  { id: 'loitering',            emoji: '👥', label: 'Suspicious Loitering',     type: 'social',        color: 'red'   },
-  { id: 'catcalling',           emoji: '📢', label: 'Catcalling / Harassment',  type: 'social',        color: 'red'   },
-  { id: 'broken_infrastructure',emoji: '🚧', label: 'Broken Infrastructure',    type: 'environmental', color: 'amber' },
-  { id: 'unsafe_vehicle',       emoji: '🚗', label: 'Unsafe / Reckless Vehicle',type: 'social',        color: 'red'   },
-  { id: 'no_bystanders',        emoji: '🏚️', label: 'Isolated / No Bystanders', type: 'environmental', color: 'gray'  },
-  { id: 'other',                emoji: '⚠️', label: 'Other',                    type: 'general',       color: 'gray'  },
+  { id: 'poor_lighting',         emoji: '🔦', label: 'Poor Lighting',             type: 'environmental', color: 'amber' },
+  { id: 'loitering',             emoji: '👥', label: 'Suspicious Loitering',      type: 'social',        color: 'red'   },
+  { id: 'catcalling',            emoji: '📢', label: 'Catcalling / Harassment',   type: 'social',        color: 'red'   },
+  { id: 'broken_infrastructure', emoji: '🚧', label: 'Broken Infrastructure',     type: 'environmental', color: 'amber' },
+  { id: 'unsafe_vehicle',        emoji: '🚗', label: 'Unsafe / Reckless Vehicle', type: 'social',        color: 'red'   },
+  { id: 'no_bystanders',         emoji: '🏚️', label: 'Isolated / No Bystanders',  type: 'environmental', color: 'gray'  },
+  { id: 'other',                 emoji: '⚠️', label: 'Other',                     type: 'general',       color: 'gray'  },
 ];
 
 const URGENCY_LEVELS = [
@@ -51,10 +57,8 @@ const STEP_LABELS = ['Category', 'Details', 'Confirm'];
 
 /* ═══════════════════════════════════════════════════════════════════════════
    STEP COMPONENTS
-   These are pure presentational — all state lives in ReportModal below.
 ═══════════════════════════════════════════════════════════════════════════ */
 
-/** Step 1 — pick a category */
 function StepCategory({ selected, onSelect }) {
   return (
     <div className="rm-step">
@@ -76,7 +80,6 @@ function StepCategory({ selected, onSelect }) {
   );
 }
 
-/** Step 2 — pick urgency + optional description */
 function StepDetails({ urgency, onUrgency, description, onDescription, category }) {
   const catObj    = CATEGORIES.find(c => c.id === category);
   const MAX       = 200;
@@ -84,7 +87,6 @@ function StepDetails({ urgency, onUrgency, description, onDescription, category 
 
   return (
     <div className="rm-step">
-      {/* recap pill showing what was selected in step 1 */}
       {catObj && (
         <div className="rm-selected-cat">
           <span aria-hidden="true">{catObj.emoji}</span>
@@ -128,7 +130,6 @@ function StepDetails({ urgency, onUrgency, description, onDescription, category 
   );
 }
 
-/** Step 3 — review before submitting */
 function StepConfirm({ category, urgency, description, userCoords }) {
   const catObj = CATEGORIES.find(c => c.id === category);
   const urgObj = URGENCY_LEVELS.find(u => u.id === urgency);
@@ -137,14 +138,12 @@ function StepConfirm({ category, urgency, description, userCoords }) {
     <div className="rm-step rm-step--confirm">
       <p className="rm-step__hint">Review before submitting</p>
 
-      {/* ── location warning — shown here so user sees it before submitting ── */}
       {!userCoords && (
         <div className="rm-location-warn">
           ⚠️ Location unavailable — your report will be submitted without coordinates
         </div>
       )}
 
-      {/* summary card */}
       <div className="rm-confirm-card">
         <div className="rm-confirm-row">
           <span className="rm-confirm-label">Incident</span>
@@ -184,7 +183,6 @@ function StepConfirm({ category, urgency, description, userCoords }) {
         )}
       </div>
 
-      {/* anonymity notice */}
       <div className="rm-confirm-notice">
         <IconShield />
         <p>
@@ -196,7 +194,6 @@ function StepConfirm({ category, urgency, description, userCoords }) {
   );
 }
 
-/** Success screen shown after a successful submission */
 function StepSuccess() {
   return (
     <div className="rm-success">
@@ -216,35 +213,30 @@ function StepSuccess() {
    MAIN MODAL COMPONENT
 ═══════════════════════════════════════════════════════════════════════════ */
 export default function ReportModal({ onClose, userCoords }) {
-  const [step,       setStep]       = useState(0);     // 0 | 1 | 2
+  const [step,       setStep]       = useState(0);
   const [submitted,  setSubmitted]  = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitErr,  setSubmitErr]  = useState('');
   const [visible,    setVisible]    = useState(false);
 
-  /* form state */
   const [category,    setCategory]    = useState(null);
   const [urgency,     setUrgency]     = useState(null);
   const [description, setDescription] = useState('');
 
-  /* slide-in on mount */
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 20);
     return () => clearTimeout(t);
   }, []);
 
-  /* close with slide-out animation */
   function handleClose() {
     setVisible(false);
     setTimeout(onClose, 340);
   }
 
-  /* tap the dark overlay to dismiss */
   function handleOverlayClick(e) {
     if (e.target === e.currentTarget) handleClose();
   }
 
-  /* can user tap Continue / Submit? */
   function canAdvance() {
     if (step === 0) return !!category;
     if (step === 1) return !!urgency;
@@ -252,62 +244,70 @@ export default function ReportModal({ onClose, userCoords }) {
   }
 
   function handleNext() {
-    if (step < 2) {
-      setStep(s => s + 1);
-      return;
-    }
+    if (step < 2) { setStep(s => s + 1); return; }
     handleSubmit();
   }
 
   function handleBack() {
-    if (step === 0) {
-      handleClose();
-      return;
-    }
+    if (step === 0) { handleClose(); return; }
     setStep(s => s - 1);
   }
 
-  /* ── Submit ────────────────────────────────────────────────────────────
-     Sends to Flask /api/reports with the Firebase ID token in the header.
-     Flask verifies the token, strips auth context, writes to Firestore.
-     The NLP sentiment step will be added to the Flask route later.
-  ─────────────────────────────────────────────────────────────────────── */
-async function handleSubmit() {
-  setSubmitting(true);
-  setSubmitErr('');
+  /* ── Submit ──────────────────────────────────────────────────────────────
+     POSTs to Flask /api/reports with the Firebase ID token in the header.
+     Flask runs NLP via analyze_report() then writes to Firestore.
+     Never write directly to Firestore here — that bypasses the NLP pipeline.
+  ───────────────────────────────────────────────────────────────────────── */
+  async function handleSubmit() {
+    setSubmitting(true);
+    setSubmitErr('');
 
-  try {
-    const reportsRef = collection(db, "reports");
+    try {
+      // 1. Get a fresh ID token — Flask uses this to verify the user
+      const idToken = await auth.currentUser.getIdToken();
 
-    const reportData = {
-      category,
-      urgency,
-      description: description.trim(),
-      location: userCoords 
-        ? { lat: userCoords.lat, lng: userCoords.lng } 
-        : null,
-      timestamp: serverTimestamp(), 
-      status: "pending",
-      userId: auth.currentUser?.uid || "anonymous"
-    };
+      // 2. Build the payload
+      const payload = {
+        category,
+        urgency,
+        description: description.trim(),
+        location: userCoords
+          ? { lat: userCoords.lat, lng: userCoords.lng }
+          : null,
+        timestamp: new Date().toISOString(),
+      };
 
-    /* This 'await' requires the 'async' keyword above */
-    await addDoc(reportsRef, reportData);
+      // 3. POST to Flask — Vite proxy forwards /api → localhost:5000
+      //    Flask runs NLP then writes to Firestore with all ai_* fields
+      const res = await fetch('/api/reports', {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
-    setSubmitted(true);
-    setTimeout(() => handleClose(), 2800);
+      // 4. Handle errors from Flask
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Server error ${res.status}`);
+      }
 
-  } catch (err) {
-    console.error("Firebase Error:", err);
-    setSubmitErr('Submission failed. Please try again.');
-  } finally {
-    setSubmitting(false);
+      // 5. Success — show the success state then close
+      setSubmitted(true);
+      setTimeout(() => handleClose(), 2800);
+
+    } catch (err) {
+      console.error('Report submission failed:', err.message);
+      setSubmitErr(err.message || 'Submission failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   }
-}
 
   const nextLabel = step === 2 ? 'Submit Report' : 'Continue';
 
-  /* ── JSX ── */
   return (
     <div
       className={`rm-overlay ${visible ? 'rm-overlay--in' : ''}`}
@@ -318,10 +318,8 @@ async function handleSubmit() {
     >
       <div className={`rm-sheet ${visible ? 'rm-sheet--in' : ''}`}>
 
-        {/* drag handle */}
         <div className="rm-handle" aria-hidden="true" />
 
-        {/* header */}
         <div className="rm-header">
           <div className="rm-header__left">
             <h2 className="rm-header__title">
@@ -342,7 +340,6 @@ async function handleSubmit() {
           </button>
         </div>
 
-        {/* step progress bar */}
         {!submitted && (
           <div className="rm-progress" aria-hidden="true">
             {STEP_LABELS.map((_, i) => (
@@ -354,15 +351,11 @@ async function handleSubmit() {
           </div>
         )}
 
-        {/* step content */}
         <div className="rm-body">
           {submitted ? (
             <StepSuccess />
           ) : step === 0 ? (
-            <StepCategory
-              selected={category}
-              onSelect={setCategory}
-            />
+            <StepCategory selected={category} onSelect={setCategory} />
           ) : step === 1 ? (
             <StepDetails
               urgency={urgency}
@@ -380,13 +373,11 @@ async function handleSubmit() {
             />
           )}
 
-          {/* submission error — shown inside the body so it's above the footer */}
           {submitErr && (
             <p className="rm-submit-err" role="alert">⚠️ {submitErr}</p>
           )}
         </div>
 
-        {/* footer buttons */}
         {!submitted && (
           <div className="rm-footer">
             <button
