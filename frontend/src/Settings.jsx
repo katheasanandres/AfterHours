@@ -281,11 +281,8 @@ export default function Settings() {
             <div className="card-divider" aria-hidden="true" />
 
             {/* Terms of Service */}
-            <button
-              className="support-row"
-              onClick={() => {/* TODO: navigate to ToS page */}}
-              aria-label="Terms of service"
-            >
+            <button className="support-row" onClick={() => navigate('/terms')}>
+            
               <div className="setting-row__icon setting-row__icon--gray">
                 <IconDoc />
               </div>

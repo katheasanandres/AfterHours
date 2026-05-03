@@ -5,6 +5,7 @@ import Home     from "./Home";
 import Profile  from "./Profile";
 import Settings from "./Settings";
 import Reports  from "./Reports";
+import ReportModal from "./ReportModal";
 
 function PrivateRoute({ children }) {
   const token = sessionStorage.getItem("ah_token");
@@ -35,6 +36,10 @@ export default function App() {
 
         <Route path="/reports" element={
           <PrivateRoute><Reports /></PrivateRoute>
+        } />
+
+        <Route path="/report" element={
+          <PrivateRoute><ReportModal /></PrivateRoute>
         } />
 
         {/* Default redirect */}

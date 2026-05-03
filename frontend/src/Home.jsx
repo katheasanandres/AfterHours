@@ -5,6 +5,7 @@ import L from 'leaflet';
 import 'leaflet.heat';
 import 'leaflet/dist/leaflet.css';
 import './Home.css';
+import ReportModal from './ReportModal';
 
 function HeatmapLayer({ points }) {
   const map = useMap();
@@ -101,6 +102,7 @@ export default function Home() {
   const [activeNav, setActiveNav]     = useState('map');
   const [alertVisible, setAlertVisible] = useState(true);
   const [currentTime, setCurrentTime]  = useState('');
+  const [reportOpen, setReportOpen]     = useState(false);
 
   const mapCenter = [14.8348, 120.2821];
 
@@ -241,9 +243,9 @@ export default function Home() {
           <span className="tag tag--gray">31 reports</span>
         </div>
 
-        {/* Action buttons */}
+         {/* Action buttons */}
         <div className="action-row">
-          <button className="btn-report">
+          <button className="btn-report" onClick={() => setReportOpen(true)}>
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
               <circle cx="7.5" cy="7.5" r="6" stroke="currentColor" strokeWidth="1.3"/>
               <line x1="7.5" y1="5" x2="7.5" y2="8.2"
@@ -293,6 +295,14 @@ export default function Home() {
         ))}
       </nav>
 
+          {/* ── REPORT MODAL ────────────────────────────────────────────────── */}
+                {reportOpen && (
+                  <ReportModal onClose={() => setReportOpen(false)} />
+                )}
+
     </div>
   );
+
+  
+
 }
