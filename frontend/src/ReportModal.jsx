@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
+import { auth } from './firebase';
 import './ReportModal.css';
 
-/*₊˚ ✧ ━━━━⊱ICONS⊰━━━━ ✧ ₊˚ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   ICONS
+═══════════════════════════════════════════════════════════════════════════ */
 const IconClose = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
     <path d="M3 3L13 13M13 3L3 13" stroke="currentColor"
@@ -24,69 +27,31 @@ const IconShield = () => (
   </svg>
 );
 
-/*₊˚ ✧ ━━━━⊱REPORT CATEGORIES   ⊰━━━━ ✧ ₊˚ 
-   Each has an emoji for instant visual scanning, a label, a color token,
-   and a type tag that will feed the NLP pipeline later.
-*/
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════════════════════════════════════ */
 const CATEGORIES = [
-  {
-    id:    'poor_lighting',
-    emoji: '🔦',
-    label: 'Poor Lighting',
-    type:  'environmental',
-    color: 'amber',
-  },
-  {
-    id:    'loitering',
-    emoji: '👥',
-    label: 'Suspicious Loitering',
-    type:  'social',
-    color: 'red',
-  },
-  {
-    id:    'catcalling',
-    emoji: '📢',
-    label: 'Catcalling / Harassment',
-    type:  'social',
-    color: 'red',
-  },
-  {
-    id:    'broken_infrastructure',
-    emoji: '🚧',
-    label: 'Broken Infrastructure',
-    type:  'environmental',
-    color: 'amber',
-  },
-  {
-    id:    'unsafe_vehicle',
-    emoji: '🚗',
-    label: 'Unsafe / Reckless Vehicle',
-    type:  'social',
-    color: 'red',
-  },
-  {
-    id:    'no_bystanders',
-    emoji: '🏚️',
-    label: 'Isolated / No Bystanders',
-    type:  'environmental',
-    color: 'gray',
-  },
-  {
-    id:    'other',
-    emoji: '⚠️',
-    label: 'Other',
-    type:  'general',
-    color: 'gray',
-  },
+  { id: 'poor_lighting',        emoji: '🔦', label: 'Poor Lighting',            type: 'environmental', color: 'amber' },
+  { id: 'loitering',            emoji: '👥', label: 'Suspicious Loitering',     type: 'social',        color: 'red'   },
+  { id: 'catcalling',           emoji: '📢', label: 'Catcalling / Harassment',  type: 'social',        color: 'red'   },
+  { id: 'broken_infrastructure',emoji: '🚧', label: 'Broken Infrastructure',    type: 'environmental', color: 'amber' },
+  { id: 'unsafe_vehicle',       emoji: '🚗', label: 'Unsafe / Reckless Vehicle',type: 'social',        color: 'red'   },
+  { id: 'no_bystanders',        emoji: '🏚️', label: 'Isolated / No Bystanders', type: 'environmental', color: 'gray'  },
+  { id: 'other',                emoji: '⚠️', label: 'Other',                    type: 'general',       color: 'gray'  },
 ];
 
 const URGENCY_LEVELS = [
-  { id: 'high',     label: 'High',     desc: 'Immediate threat',   color: 'red'   },
+  { id: 'high',     label: 'High',     desc: 'Immediate threat',    color: 'red'   },
   { id: 'moderate', label: 'Moderate', desc: 'Concerning but safe', color: 'amber' },
   { id: 'low',      label: 'Low',      desc: 'Worth noting',        color: 'green' },
 ];
 
-/*₊˚ ✧ ━━━━⊱STEPS⊰━━━━ ✧ ₊˚ */
+const STEP_LABELS = ['Category', 'Details', 'Confirm'];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STEP COMPONENTS
+   These are pure presentational — all state lives in ReportModal below.
+═══════════════════════════════════════════════════════════════════════════ */
 
 /** Step 1 — pick a category */
 function StepCategory({ selected, onSelect }) {
@@ -97,8 +62,7 @@ function StepCategory({ selected, onSelect }) {
         {CATEGORIES.map(cat => (
           <button
             key={cat.id}
-            className={`rm-cat-btn rm-cat-btn--${cat.color}
-              ${selected === cat.id ? 'rm-cat-btn--active' : ''}`}
+            className={`rm-cat-btn rm-cat-btn--${cat.color} ${selected === cat.id ? 'rm-cat-btn--active' : ''}`}
             onClick={() => onSelect(cat.id)}
             aria-pressed={selected === cat.id}
           >
@@ -113,13 +77,13 @@ function StepCategory({ selected, onSelect }) {
 
 /** Step 2 — pick urgency + optional description */
 function StepDetails({ urgency, onUrgency, description, onDescription, category }) {
-  const catObj = CATEGORIES.find(c => c.id === category);
-  const MAX    = 200;
+  const catObj    = CATEGORIES.find(c => c.id === category);
+  const MAX       = 200;
   const remaining = MAX - description.length;
 
   return (
     <div className="rm-step">
-      {/* selected category pill */}
+      {/* recap pill showing what was selected in step 1 */}
       {catObj && (
         <div className="rm-selected-cat">
           <span aria-hidden="true">{catObj.emoji}</span>
@@ -127,14 +91,12 @@ function StepDetails({ urgency, onUrgency, description, onDescription, category 
         </div>
       )}
 
-      {/* urgency */}
       <p className="rm-step__hint">How urgent is this?</p>
       <div className="rm-urgency-row">
         {URGENCY_LEVELS.map(u => (
           <button
             key={u.id}
-            className={`rm-urgency-btn rm-urgency-btn--${u.color}
-              ${urgency === u.id ? 'rm-urgency-btn--active' : ''}`}
+            className={`rm-urgency-btn rm-urgency-btn--${u.color} ${urgency === u.id ? 'rm-urgency-btn--active' : ''}`}
             onClick={() => onUrgency(u.id)}
             aria-pressed={urgency === u.id}
           >
@@ -144,7 +106,6 @@ function StepDetails({ urgency, onUrgency, description, onDescription, category 
         ))}
       </div>
 
-      {/* optional description */}
       <div className="rm-desc-wrap">
         <label className="rm-desc-label" htmlFor="rm-description">
           Additional details
@@ -166,8 +127,8 @@ function StepDetails({ urgency, onUrgency, description, onDescription, category 
   );
 }
 
-/** Step 3 — confirm & send */
-function StepConfirm({ category, urgency, description }) {
+/** Step 3 — review before submitting */
+function StepConfirm({ category, urgency, description, userCoords }) {
   const catObj = CATEGORIES.find(c => c.id === category);
   const urgObj = URGENCY_LEVELS.find(u => u.id === urgency);
 
@@ -175,6 +136,14 @@ function StepConfirm({ category, urgency, description }) {
     <div className="rm-step rm-step--confirm">
       <p className="rm-step__hint">Review before submitting</p>
 
+      {/* ── location warning — shown here so user sees it before submitting ── */}
+      {!userCoords && (
+        <div className="rm-location-warn">
+          ⚠️ Location unavailable — your report will be submitted without coordinates
+        </div>
+      )}
+
+      {/* summary card */}
       <div className="rm-confirm-card">
         <div className="rm-confirm-row">
           <span className="rm-confirm-label">Incident</span>
@@ -182,13 +151,27 @@ function StepConfirm({ category, urgency, description }) {
             {catObj?.emoji} {catObj?.label}
           </span>
         </div>
+
         <div className="rm-confirm-divider" aria-hidden="true" />
+
         <div className="rm-confirm-row">
           <span className="rm-confirm-label">Urgency</span>
           <span className={`rm-confirm-value rm-confirm-value--${urgObj?.color}`}>
             {urgObj?.label}
           </span>
         </div>
+
+        <div className="rm-confirm-divider" aria-hidden="true" />
+
+        <div className="rm-confirm-row">
+          <span className="rm-confirm-label">Location</span>
+          <span className="rm-confirm-value">
+            {userCoords
+              ? `${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)}`
+              : 'Unavailable'}
+          </span>
+        </div>
+
         {description.trim() && (
           <>
             <div className="rm-confirm-divider" aria-hidden="true" />
@@ -200,18 +183,19 @@ function StepConfirm({ category, urgency, description }) {
         )}
       </div>
 
+      {/* anonymity notice */}
       <div className="rm-confirm-notice">
         <IconShield />
         <p>
           Your report is <strong>100% anonymous</strong>. Your location is used
-          only to place the report on the heatmap and is not stored.
+          only to place the report on the heatmap and is never stored.
         </p>
       </div>
     </div>
   );
 }
 
-/** Success state */
+/** Success screen shown after a successful submission */
 function StepSuccess() {
   return (
     <div className="rm-success">
@@ -227,14 +211,15 @@ function StepSuccess() {
   );
 }
 
-/*₊˚ ✧ ━━━━⊱MAIN MODAL COMPONENTS⊰━━━━ ✧ ₊˚ */
-const STEP_LABELS = ['Category', 'Details', 'Confirm'];
-
-export default function ReportModal({ onClose }) {
-  const [step,        setStep]        = useState(0);   // 0 | 1 | 2
-  const [submitted,   setSubmitted]   = useState(false);
-  const [submitting,  setSubmitting]  = useState(false);
-  const [visible,     setVisible]     = useState(false);
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN MODAL COMPONENT
+═══════════════════════════════════════════════════════════════════════════ */
+export default function ReportModal({ onClose, userCoords }) {
+  const [step,       setStep]       = useState(0);     // 0 | 1 | 2
+  const [submitted,  setSubmitted]  = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitErr,  setSubmitErr]  = useState('');
+  const [visible,    setVisible]    = useState(false);
 
   /* form state */
   const [category,    setCategory]    = useState(null);
@@ -253,12 +238,12 @@ export default function ReportModal({ onClose }) {
     setTimeout(onClose, 340);
   }
 
-  /* dismiss on overlay click */
+  /* tap the dark overlay to dismiss */
   function handleOverlayClick(e) {
     if (e.target === e.currentTarget) handleClose();
   }
 
-  /* step navigation */
+  /* can user tap Continue / Submit? */
   function canAdvance() {
     if (step === 0) return !!category;
     if (step === 1) return !!urgency;
@@ -266,47 +251,76 @@ export default function ReportModal({ onClose }) {
   }
 
   function handleNext() {
-    if (step < 2) { setStep(s => s + 1); return; }
+    if (step < 2) {
+      setStep(s => s + 1);
+      return;
+    }
     handleSubmit();
   }
 
   function handleBack() {
-    if (step === 0) { handleClose(); return; }
+    if (step === 0) {
+      handleClose();
+      return;
+    }
     setStep(s => s - 1);
   }
 
-  /* submit — TODO (backend): POST to Flask /api/reports with ID token */
+  /* ── Submit ────────────────────────────────────────────────────────────
+     Sends to Flask /api/reports with the Firebase ID token in the header.
+     Flask verifies the token, strips auth context, writes to Firestore.
+     The NLP sentiment step will be added to the Flask route later.
+  ─────────────────────────────────────────────────────────────────────── */
   async function handleSubmit() {
     setSubmitting(true);
+    setSubmitErr('');
 
-    const payload = {
-      category,
-      urgency,
-      description: description.trim(),
-      // location will be injected from the map context later
-      // timestamp: new Date().toISOString(),
-    };
+    try {
+      // 1. Get a fresh ID token from Firebase Auth
+      const idToken = await auth.currentUser.getIdToken();
 
-    // Simulated network delay — replace with real fetch() call:
-    // const idToken = await auth.currentUser.getIdToken();
-    // await fetch('/api/reports', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
-    //   body: JSON.stringify(payload),
-    // });
+      // 2. Build the payload — location comes from the parent Home component
+      //    via the userCoords prop (from useLocation hook)
+      const payload = {
+        category,
+        urgency,
+        description: description.trim(),
+        location: userCoords
+          ? { lat: userCoords.lat, lng: userCoords.lng }
+          : null,
+        timestamp: new Date().toISOString(),
+      };
 
-    await new Promise(r => setTimeout(r, 1200)); // remove when real API is ready
-    console.log('Report payload (ready for Flask):', payload);
+      // 3. POST to Flask — Vite proxy forwards /api → localhost:5000
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
-    setSubmitting(false);
-    setSubmitted(true);
+      // 4. Handle non-2xx responses
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Server error ${res.status}`);
+      }
 
-    // auto-close after success
-    setTimeout(() => handleClose(), 2800);
+      // 5. Success
+      setSubmitted(true);
+      setTimeout(() => handleClose(), 2800);
+
+    } catch (err) {
+      setSubmitErr(err.message || 'Submission failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const nextLabel = step === 2 ? 'Submit Report' : 'Continue';
 
+  /* ── JSX ── */
   return (
     <div
       className={`rm-overlay ${visible ? 'rm-overlay--in' : ''}`}
@@ -317,10 +331,10 @@ export default function ReportModal({ onClose }) {
     >
       <div className={`rm-sheet ${visible ? 'rm-sheet--in' : ''}`}>
 
-        {/* ── drag handle ── */}
+        {/* drag handle */}
         <div className="rm-handle" aria-hidden="true" />
 
-        {/* ── header ── */}
+        {/* header */}
         <div className="rm-header">
           <div className="rm-header__left">
             <h2 className="rm-header__title">
@@ -341,7 +355,7 @@ export default function ReportModal({ onClose }) {
           </button>
         </div>
 
-        {/* ── progress bar ── */}
+        {/* step progress bar */}
         {!submitted && (
           <div className="rm-progress" aria-hidden="true">
             {STEP_LABELS.map((_, i) => (
@@ -353,16 +367,21 @@ export default function ReportModal({ onClose }) {
           </div>
         )}
 
-        {/* ── step content ── */}
+        {/* step content */}
         <div className="rm-body">
           {submitted ? (
             <StepSuccess />
           ) : step === 0 ? (
-            <StepCategory selected={category} onSelect={setCategory} />
+            <StepCategory
+              selected={category}
+              onSelect={setCategory}
+            />
           ) : step === 1 ? (
             <StepDetails
-              urgency={urgency}       onUrgency={setUrgency}
-              description={description} onDescription={setDescription}
+              urgency={urgency}
+              onUrgency={setUrgency}
+              description={description}
+              onDescription={setDescription}
               category={category}
             />
           ) : (
@@ -370,11 +389,17 @@ export default function ReportModal({ onClose }) {
               category={category}
               urgency={urgency}
               description={description}
+              userCoords={userCoords}
             />
+          )}
+
+          {/* submission error — shown inside the body so it's above the footer */}
+          {submitErr && (
+            <p className="rm-submit-err" role="alert">⚠️ {submitErr}</p>
           )}
         </div>
 
-        {/* ── footer actions ── */}
+        {/* footer buttons */}
         {!submitted && (
           <div className="rm-footer">
             <button

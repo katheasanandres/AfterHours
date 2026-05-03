@@ -6,6 +6,7 @@ import 'leaflet.heat';
 import 'leaflet/dist/leaflet.css';
 import './Home.css';
 import ReportModal from './ReportModal';
+import { useLocation } from './hooks/useLocation';
 
 function HeatmapLayer({ points }) {
   const map = useMap();
@@ -103,8 +104,11 @@ export default function Home() {
   const [alertVisible, setAlertVisible] = useState(true);
   const [currentTime, setCurrentTime]  = useState('');
   const [reportOpen, setReportOpen]     = useState(false);
+  const { coords, error: locationError, loading: locationLoading } = useLocation();
 
-  const mapCenter = [14.8348, 120.2821];
+  const mapCenter = coords
+  ? [coords.lat, coords.lng]
+  : [14.8348, 120.2821];
 
   // Live clock 
   useEffect(() => {
@@ -297,9 +301,11 @@ export default function Home() {
 
           {/* ── REPORT MODAL ────────────────────────────────────────────────── */}
                 {reportOpen && (
-                  <ReportModal onClose={() => setReportOpen(false)} />
-                )}
-
+                  <ReportModal
+                    onClose={() => setReportOpen(false)}
+                    userCoords={coords}
+                    />
+                                )}
     </div>
   );
 
