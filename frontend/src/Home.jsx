@@ -12,7 +12,6 @@ import './Home.css';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MAP SUB-COMPONENTS
-   These live outside Home() so they don't re-mount on every render.
 ═══════════════════════════════════════════════════════════════════════════ */
 
 /** Renders the risk heatmap layer inside the Leaflet map context */
@@ -61,10 +60,6 @@ function UserDot({ position }) {
   return null;
 }
 
-/**
- * Exposes the Leaflet map instance to the parent via a ref.
- * Parent calls mapRef.current.flyTo([lat, lng]) to re-center.
- */
 function MapController({ mapRef }) {
   const map = useMap();
   useEffect(() => { mapRef.current = map; }, [map, mapRef]);
@@ -114,7 +109,7 @@ const NavIconSettings = ({ active }) => (
 );
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MAIN COMPONENT
+   MAIN COMPONENTS
 ═══════════════════════════════════════════════════════════════════════════ */
 export default function Home() {
   const navigate = useNavigate();
