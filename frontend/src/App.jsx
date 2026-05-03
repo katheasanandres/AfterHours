@@ -3,6 +3,7 @@ import AuthPage from "./AuthPage";
 import Home     from "./Home";
 import Profile  from "./Profile";
 import Settings from "./Settings";
+import Reports  from "./Reports";
 
 function PrivateRoute({ children }) {
   const token = sessionStorage.getItem("ah_token");
@@ -25,6 +26,10 @@ export default function App() {
 
         <Route path="/settings" element={
           <PrivateRoute><Settings /></PrivateRoute>
+        } />
+
+        <Route path="/reports" element={
+          <PrivateRoute><Reports /></PrivateRoute>
         } />
 
         {/* Default redirect */}

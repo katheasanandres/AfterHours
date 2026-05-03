@@ -51,7 +51,7 @@ function UserDot({ position }) {
   return null;
 }
 
-/* ─── SVG Nav Icons ─────────────────────── */
+/* * ₊˚ ✧ ━━━━⊱SVG Nav Icons⊰━━━━ ✧ ₊˚ * */
 const NavIconMap      = ({ active }) => (
   <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
     <rect x="2" y="2" width="7" height="7" rx="1.5"
@@ -117,7 +117,7 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
-  // ──fake ass spatiotemporal heatmap data ───────────────────────────────────
+  // * ₊˚ ✧ ━━━━⊱Fake spatiotemporal data⊰━━━━ ✧ ₊˚ *
   // Format: [lat, lng, intensity 0–1]
   // to be replaced with real firestore data when backend is ready. Hindi pa kasi sya ready puta
   const heatPoints = [
@@ -130,7 +130,7 @@ export default function Home() {
     [14.8380, 120.2860, 0.25],
   ];
 
-  // ── Nav handler ────────────────
+  // * ₊˚ ✧ ━━━━⊱Nav handler⊰━━━━ ✧ ₊˚ *
   function handleNav(key) {
     setActiveNav(key);
     
@@ -147,7 +147,7 @@ export default function Home() {
   return (
     <div className="home-root">
 
-      {/* ── HEADER ──────────────────────────────────────────────────────── */}
+      {/* * ₊˚ ✧ ━━━━⊱HEADER⊰━━━━ ✧ ₊˚ * */}
       <header className="home-header">
         <h1 className="home-logo">
           After<span>Hours</span>
@@ -161,7 +161,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ── MAP AREA ────────────────────────────────────────────────────── */}
+      {/* * ₊˚ ✧ ━━━━⊱MAP AREA⊰━━━━ ✧ ₊˚ * */}
       <div className="map-area">
         <MapContainer
           center={mapCenter}
@@ -223,7 +223,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── BOTTOM SHEET ────────────────────────────────────────────────── */}
+      {/* * ₊˚ ✧ ━━━━⊱BOTTOM SHEET⊰━━━━ ✧ ₊˚ * */}
       <div className="bottom-sheet">
         <div className="bottom-sheet__handle" aria-hidden="true" />
 
@@ -273,7 +273,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── BOTTOM NAV ──────────────────────────────────────────────────── */}
+      {/* * ₊˚ ✧ ━━━━⊱ BOTTOM NAV ⊰━━━━ ✧ ₊˚ * */}
       <nav className="bottom-nav" aria-label="Main navigation">
         {[
           { key: 'map',      label: 'Map',      Icon: NavIconMap },
