@@ -1,11 +1,12 @@
 from transformers import pipeline
 
+# ── Model ──────────────────────────────────────────────────────────────────
 _classifier = pipeline(
     "zero-shot-classification",
-    model="typeform/distilbart-mnli-12-3"
+    model="cross-encoder/nli-MiniLM2-L6-H768",
 )
 
-# Frontend category IDs
+# ── Labels ─────────────────────────────────────────────────────────────────
 CATEGORY_LABELS = [
     "poor lighting or dark area",
     "suspicious loitering or lurking person",
@@ -22,75 +23,76 @@ URGENCY_LABELS = [
     "minor safety concern worth noting",
 ]
 
-# Maps NLP output back to the app's IDs
 CATEGORY_MAP = {
-    "poor lighting or dark area":              "poor_lighting",
-    "suspicious loitering or lurking person":  "loitering",
-    "catcalling or verbal harassment":         "catcalling",
-    "broken infrastructure or road hazard":    "broken_infrastructure",
-    "unsafe or reckless vehicle":              "unsafe_vehicle",
-    "isolated area with no bystanders":        "no_bystanders",
-    "general safety concern":                  "other",
+    "poor lighting or dark area":             "poor_lighting",
+    "suspicious loitering or lurking person": "loitering",
+    "catcalling or verbal harassment":        "catcalling",
+    "broken infrastructure or road hazard":   "broken_infrastructure",
+    "unsafe or reckless vehicle":             "unsafe_vehicle",
+    "isolated area with no bystanders":       "no_bystanders",
+    "general safety concern":                 "other",
 }
 
 URGENCY_MAP = {
-    "immediate danger or threat":                   "high",
-    "concerning but not immediately dangerous":     "moderate",
-    "minor safety concern worth noting":            "low",
+    "immediate danger or threat":               "high",
+    "concerning but not immediately dangerous": "moderate",
+    "minor safety concern worth noting":        "low",
+}
+
+FALLBACK_TEXT = {
+    "poor_lighting":         "poor lighting dark area unsafe at night",
+    "loitering":             "suspicious person loitering lurking nearby",
+    "catcalling":            "catcalling verbal harassment unwanted attention",
+    "broken_infrastructure": "broken road hazard damaged infrastructure",
+    "unsafe_vehicle":        "reckless driver unsafe vehicle speeding",
+    "no_bystanders":         "isolated area no people around deserted",
+    "other":                 "general safety concern",
 }
 
 
 def analyze_report(description: str, user_category: str, user_urgency: str) -> dict:
     """
-    Runs zero-shot NLP classification on the report text.
-    Falls back to the user's category label if no description provided.
-    Returns a dict of AI analysis results to store alongside the report.
+    Runs zero-shot NLP classification on the report.
+
+    - If a description was provided, NLP runs on that text.
+    - If no description, NLP runs on a fallback phrase derived from the
+      user's selected category. Result is flagged as low_confidence.
+
+    Returns a dict of AI fields to store alongside the report in Firestore.
     """
-    # If no description, use the category as fallback text
-    # This ensures NLP always runs — just with lower confidence
-    text = description.strip() if description.strip() else _label_from_category(user_category)
-    low_confidence = not description.strip()
+    text          = description.strip()
+    low_confidence = not bool(text)
 
-    # Classify category
-    cat_result = _classifier(text, CATEGORY_LABELS, multi_label=False)
+    if low_confidence:
+        text = FALLBACK_TEXT.get(user_category, "safety concern")
+
+    # ── Category classification ───────────────────────────────────────────
+    cat_result    = _classifier(text, list(CATEGORY_MAP.keys()), multi_label=False)
     top_cat_label = cat_result["labels"][0]
-    top_cat_score = cat_result["scores"][0]
+    top_cat_score = round(cat_result["scores"][0], 3)
+    ai_category   = CATEGORY_MAP[top_cat_label]
 
-    # Classify urgency
-    urg_result = _classifier(text, URGENCY_LABELS, multi_label=False)
+    # ── Urgency classification ────────────────────────────────────────────
+    urg_result    = _classifier(text, list(URGENCY_MAP.keys()), multi_label=False)
     top_urg_label = urg_result["labels"][0]
-    top_urg_score = urg_result["scores"][0]
+    top_urg_score = round(urg_result["scores"][0], 3)
+    ai_urgency    = URGENCY_MAP[top_urg_label]
 
-    ai_category = CATEGORY_MAP[top_cat_label]
-    ai_urgency  = URGENCY_MAP[top_urg_label]
-
-    # Detect mismatch between what user picked and what NLP detected
+    # ── Mismatch detection ────────────────────────────────────────────────
     category_mismatch = ai_category != user_category
     urgency_mismatch  = ai_urgency  != user_urgency
+
+    # ── Effective urgency ─────────────────────────────────────────────────
+    # Use AI result when confidence is high enough, otherwise trust the user
+    effective_urgency = ai_urgency if top_urg_score >= 0.60 else user_urgency
 
     return {
         "ai_category":         ai_category,
         "ai_urgency":          ai_urgency,
-        "category_confidence": round(top_cat_score, 3),
-        "urgency_confidence":  round(top_urg_score, 3),
+        "category_confidence": top_cat_score,
+        "urgency_confidence":  top_urg_score,
         "category_mismatch":   category_mismatch,
         "urgency_mismatch":    urgency_mismatch,
         "low_confidence":      low_confidence,
-        # The heatmap uses AI urgency when confidence is high,
-        # falls back to user urgency when confidence is low
-        "effective_urgency": ai_urgency if top_urg_score > 0.6 else user_urgency,
+        "effective_urgency":   effective_urgency,
     }
-
-
-def _label_from_category(category_id: str) -> str:
-    """Converts a category ID back to human-readable text for NLP fallback."""
-    labels = {
-        "poor_lighting":         "poor lighting dark area unsafe",
-        "loitering":             "suspicious person loitering lurking",
-        "catcalling":            "catcalling verbal harassment unwanted attention",
-        "broken_infrastructure": "broken road hazard damaged infrastructure",
-        "unsafe_vehicle":        "reckless driver unsafe vehicle",
-        "no_bystanders":         "isolated area no people around",
-        "other":                 "general safety concern",
-    }
-    return labels.get(category_id, "safety concern")
