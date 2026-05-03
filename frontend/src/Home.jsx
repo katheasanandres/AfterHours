@@ -12,7 +12,6 @@ import './Home.css';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MAP SUB-COMPONENTS
-   These live outside Home() so they don't re-mount on every render.
 ═══════════════════════════════════════════════════════════════════════════ */
 
 /** Renders the risk heatmap layer inside the Leaflet map context */
@@ -123,8 +122,6 @@ export default function Home() {
     : [14.8348, 120.2821];
 
   // ── Real-time heatmap data from Firestore ─────────────────────────────
-  // Replaces the old static heatPoints array.
-  // Listens to the "reports" collection and maps urgency → intensity.
   const [heatPoints, setHeatPoints] = useState([]);
 
   useEffect(() => {
@@ -132,7 +129,7 @@ export default function Home() {
       const points = [];
       snapshot.forEach(doc => {
         const d = doc.data();
-        // Only plot reports that have a valid location
+        // Only plot reports that have a valid locatio
         if (d.location?.lat && d.location?.lng) {
           const intensity = { high: 1.0, moderate: 0.55, low: 0.25 }[d.urgency] ?? 0.4;
           points.push([d.location.lat, d.location.lng, intensity]);
