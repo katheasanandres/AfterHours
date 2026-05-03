@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { auth } from './firebase';
+import { auth, db } from './firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import './ReportModal.css';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -271,52 +272,38 @@ export default function ReportModal({ onClose, userCoords }) {
      Flask verifies the token, strips auth context, writes to Firestore.
      The NLP sentiment step will be added to the Flask route later.
   ─────────────────────────────────────────────────────────────────────── */
-  async function handleSubmit() {
-    setSubmitting(true);
-    setSubmitErr('');
+async function handleSubmit() {
+  setSubmitting(true);
+  setSubmitErr('');
 
-    try {
-      // 1. Get a fresh ID token from Firebase Auth
-      const idToken = await auth.currentUser.getIdToken();
+  try {
+    const reportsRef = collection(db, "reports");
 
-      // 2. Build the payload — location comes from the parent Home component
-      //    via the userCoords prop (from useLocation hook)
-      const payload = {
-        category,
-        urgency,
-        description: description.trim(),
-        location: userCoords
-          ? { lat: userCoords.lat, lng: userCoords.lng }
-          : null,
-        timestamp: new Date().toISOString(),
-      };
+    const reportData = {
+      category,
+      urgency,
+      description: description.trim(),
+      location: userCoords 
+        ? { lat: userCoords.lat, lng: userCoords.lng } 
+        : null,
+      timestamp: serverTimestamp(), 
+      status: "pending",
+      userId: auth.currentUser?.uid || "anonymous"
+    };
 
-      // 3. POST to Flask — Vite proxy forwards /api → localhost:5000
-      const res = await fetch('/api/reports', {
-        method: 'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${idToken}`,
-        },
-        body: JSON.stringify(payload),
-      });
+    /* This 'await' requires the 'async' keyword above */
+    await addDoc(reportsRef, reportData);
 
-      // 4. Handle non-2xx responses
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `Server error ${res.status}`);
-      }
+    setSubmitted(true);
+    setTimeout(() => handleClose(), 2800);
 
-      // 5. Success
-      setSubmitted(true);
-      setTimeout(() => handleClose(), 2800);
-
-    } catch (err) {
-      setSubmitErr(err.message || 'Submission failed. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
+  } catch (err) {
+    console.error("Firebase Error:", err);
+    setSubmitErr('Submission failed. Please try again.');
+  } finally {
+    setSubmitting(false);
   }
+}
 
   const nextLabel = step === 2 ? 'Submit Report' : 'Continue';
 
