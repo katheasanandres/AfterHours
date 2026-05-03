@@ -104,7 +104,7 @@ export default function Profile() {
     trustScore: 0,
   });
 
-  /** ── HELPERS (Declared before useEffect to avoid declaration errors) ── */
+  /** ── HELPERS ── */
   
   const setupSession = useCallback((uid) => {
     const lastLoginUid = localStorage.getItem('last_login_uid');
@@ -273,13 +273,56 @@ export default function Profile() {
       </main>
 
       <nav className="bottom-nav">
-        {['map', 'reports', 'profile', 'settings'].map((key) => (
+        {[
+          {
+            key: 'map', label: 'Map',
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                <rect x="2" y="2" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.25)"/>
+                <rect x="13" y="2" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.25)"/>
+                <rect x="2" y="13" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.25)"/>
+                <rect x="13" y="13" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.25)"/>
+              </svg>
+            ),
+          },
+          {
+            key: 'reports', label: 'Reports',
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                <path d="M11 2C7.5 2 5 4.5 5 7.5C5 12 11 20 11 20C11 20 17 12 17 7.5C17 4.5 14.5 2 11 2Z"
+                  stroke="rgba(255,255,255,0.35)" strokeWidth="1.4" strokeLinejoin="round"/>
+                <circle cx="11" cy="7.5" r="2.2" stroke="rgba(255,255,255,0.35)" strokeWidth="1.4"/>
+              </svg>
+            ),
+          },
+          {
+            key: 'profile', label: 'Profile',
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                <circle cx="11" cy="8" r="4" stroke="var(--accent)" strokeWidth="1.4"/>
+                <path d="M4 20C4 16.7 7.1 14 11 14C14.9 14 18 16.7 18 20"
+                  stroke="var(--accent)" strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+            ),
+          },
+          {
+            key: 'settings', label: 'Settings',
+            icon: (
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+                <circle cx="11" cy="11" r="3" stroke="rgba(255,255,255,0.35)" strokeWidth="1.4"/>
+                <path d="M11 2V4.5M11 17.5V20M2 11H4.5M17.5 11H20M4.9 4.9L6.7 6.7M15.3 15.3L17.1 17.1M4.9 17.1L6.7 15.3M15.3 6.7L17.1 4.9"
+                  stroke="rgba(255,255,255,0.35)" strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+            ),
+          },
+        ].map(({ key, label, icon }) => (
           <button
             key={key}
             className={`nav-item ${key === 'profile' ? 'nav-item--active' : ''}`}
             onClick={() => key !== 'profile' && navigate(`/${key}`)}
           >
-            <span className="nav-item__label" style={{textTransform: 'capitalize'}}>{key}</span>
+            {icon}
+            <span className="nav-item__label">{label}</span>
           </button>
         ))}
       </nav>
