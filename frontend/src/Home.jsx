@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db } from './firebase';
+import { signOut } from 'firebase/auth';
+import { auth, db } from './firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -12,6 +13,7 @@ import './Home.css';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MAP SUB-COMPONENTS
+   These live outside Home() so they don't re-mount on every render.
 ═══════════════════════════════════════════════════════════════════════════ */
 
 /** Renders the risk heatmap layer inside the Leaflet map context */
@@ -122,6 +124,8 @@ export default function Home() {
     : [14.8348, 120.2821];
 
   // ── Real-time heatmap data from Firestore ─────────────────────────────
+  // Replaces the old static heatPoints array.
+  // Listens to the "reports" collection and maps urgency → intensity.
   const [heatPoints, setHeatPoints] = useState([]);
 
   useEffect(() => {
@@ -129,7 +133,7 @@ export default function Home() {
       const points = [];
       snapshot.forEach(doc => {
         const d = doc.data();
-        // Only plot reports that have a valid locatio
+        // Only plot reports that have a valid location
         if (d.location?.lat && d.location?.lng) {
           const intensity = { high: 1.0, moderate: 0.55, low: 0.25 }[d.urgency] ?? 0.4;
           points.push([d.location.lat, d.location.lng, intensity]);
@@ -159,6 +163,12 @@ export default function Home() {
   function handleNav(key) {
     setActiveNav(key);
     if (key !== 'map') navigate(`/${key}`);
+  }
+
+  // ── Logout ────────────────────────────────────────────────────────────
+  async function handleLogout() {
+    await signOut(auth);
+    navigate('/login');
   }
 
   /* ── JSX ── */
@@ -286,13 +296,7 @@ export default function Home() {
             </svg>
           </button>
 
-          <button className="btn-icon" aria-label="Saved locations">
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path d="M9 2C6.2 2 4 4.2 4 7C4 11 9 16 9 16C9 16 14 11 14 7C14 4.2 11.8 2 9 2Z"
-                stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
-              <circle cx="9" cy="7" r="2" stroke="currentColor" strokeWidth="1.3"/>
-            </svg>
-          </button>
+
         </div>
       </div>
 
