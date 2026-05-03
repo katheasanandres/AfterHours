@@ -565,8 +565,20 @@ export default function AuthPage() {
       </main>
 
       <footer className="auth-footer">
-        <span>AfterHours · Stay aware, stay safe.</span>
+        <div className="auth-terms">
+          By continuing, you agree to our 
+            <button 
+              type="button" 
+              className="terms-btn" 
+              onClick={() => navigate('/terms')}
+            >
+              Terms & Conditions
+            </button>
+        </div>
+        
+          <span className="footer-copyright">AfterHours · Stay aware, stay safe.</span>
       </footer>
+
     </div>
   );
 }

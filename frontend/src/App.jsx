@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AuthPage from "./AuthPage";
+import TermsOfService from "./TermsOfService";
 import Home     from "./Home";
 import Profile  from "./Profile";
 import Settings from "./Settings";
@@ -15,6 +16,10 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login"  element={<AuthPage />} />
+
+        <Route path="/terms" element={
+          <TermsOfService />
+          } />
         
         <Route path="/home" element={
           <PrivateRoute><Home /></PrivateRoute>

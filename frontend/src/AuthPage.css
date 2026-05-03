@@ -643,18 +643,59 @@ body {
   letter-spacing: 0.04em;
 }
 
-/* ₊˚ ✧ ━━━━⊱FOOTER⊰━━━━ ✧ ₊˚ */
+/* ₊˚ ✧ ━━━━⊱TERMS & FOOTER⊰━━━━ ✧ ₊˚ */
 .auth-footer {
   position: relative;
   z-index: 1;
-  margin-top: 24px;
-  font-size: 11px;
-  color: var(--txt3);
-  letter-spacing: 0.04em;
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
   text-align: center;
 }
 
-/* ₊˚ ✧ ━━━━⊱RESPONSIVE⊰━━━━ ✧ ₊˚ */
+.auth-terms {
+  font-size: 11px;
+  color: var(--txt3);
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  max-width: 280px;
+}
+
+.terms-btn {
+  background: none;
+  border: none;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 500;
+  cursor: pointer;
+  margin-left: 4px;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: opacity 0.2s var(--ease);
+}
+
+.terms-btn:hover {
+  opacity: 0.8;
+}
+
+.footer-copyright {
+  font-size: 10px;
+  color: var(--txt3);
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+@media (max-height: 700px) {
+  .auth-footer {
+    margin-top: 20px;
+    padding-bottom: 20px;
+  }
+}
+
 @media (max-width: 420px) {
   .auth-card {
     padding: 24px 18px 22px;
