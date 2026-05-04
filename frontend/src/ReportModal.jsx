@@ -2,13 +2,6 @@ import { useState, useEffect } from 'react';
 import { auth } from './firebase';
 import './ReportModal.css';
 
-// ✅ REMOVED: import { db } from './firebase'
-// ✅ REMOVED: import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
-//
-// Reports must go through Flask (/api/reports) so the NLP pipeline runs.
-// Flask verifies the token, runs analyze_report(), then writes to Firestore.
-// Writing directly from the frontend skips NLP entirely.
-
 /* ═══════════════════════════════════════════════════════════════════════════
    ICONS
 ═══════════════════════════════════════════════════════════════════════════ */
