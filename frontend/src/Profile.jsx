@@ -116,9 +116,15 @@ export default function Profile() {
   }, [sessionRotation]);
 
   const listenToUserStats = useCallback((uid) => {
+    // DEBUG: Checking the query parameters
+    console.log("DEBUG: Profile is querying Firestore for userId:", uid);
+
     const q = query(collection(db, "reports"), where("userId", "==", uid));
     
     return onSnapshot(q, (snapshot) => {
+      // DEBUG: Checking the results
+      console.log("DEBUG: Firestore snapshot received. Size:", snapshot.size);
+      
       const reportCount = snapshot.size;
       const verifiedCount = snapshot.docs.filter(doc => doc.data().status === 'verified').length;
       const calculatedTrust = Math.min(reportCount * 5, 100);
@@ -129,6 +135,9 @@ export default function Profile() {
         usersHelped: (reportCount * 12).toLocaleString(), 
         trustScore: calculatedTrust,
       });
+    }, (error) => {
+      // DEBUG: Catching hidden permission or index errors
+      console.error("DEBUG: Firestore snapshot error:", error);
     });
   }, []);
 
@@ -136,11 +145,13 @@ export default function Profile() {
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged((u) => {
       if (u) {
+        console.log("DEBUG: User authenticated with UID:", u.uid);
         setUser(u);
         setupSession(u.uid);
         const unsubscribeStats = listenToUserStats(u.uid);
         return () => unsubscribeStats();
       } else {
+        console.log("DEBUG: No user found, navigating to login");
         navigate('/login');
       }
     });
@@ -162,8 +173,9 @@ export default function Profile() {
       snapshot.docs.forEach((doc) => batch.delete(doc.ref));
       await batch.commit();
       setShowDeleteModal(false);
+      console.log("DEBUG: Batch delete successful for UID:", user.uid);
     } catch (err) {
-      console.error("Delete failed:", err);
+      console.error("DEBUG: Delete failed:", err);
     }
   }
 
