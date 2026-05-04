@@ -413,13 +413,7 @@ function ReportDetailSheet({ report, onClose }) {
             </div>
           </div>
 
-          {/* Report ID (for transparency) */}
-          <div className="detail-section">
-            <p className="detail-section__label">Report ID</p>
-            <p className="detail-section__value detail-section__value--mono detail-section__value--muted">
-              {report.id}
-            </p>
-          </div>
+          
 
         </div>
 
