@@ -157,7 +157,7 @@ export default function Profile() {
   async function handleDeleteData() {
     if (!user) return;
     try {
-      const q = query(collection(db, "reports"), where("userId", "==", user.uid));
+      const q = query(collection(db, "reports"), where("uid", "==", user.uid));
       const snapshot = await getDocs(q);
       const batch = writeBatch(db);
       snapshot.docs.forEach((doc) => batch.delete(doc.ref));
