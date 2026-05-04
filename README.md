@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./frontend/assets/logo.png" width="50" height="50" alt="Logo" />
+  <img src="https://pin.it/7shspC1Ka" width="50" height="50" alt="ralsei" />
   <h1>🌃 AfterHours</h1>
   <p><strong>AI-Driven Spatiotemporal Safety Mapping & Sentiment Analysis</strong></p>
 
