@@ -246,11 +246,7 @@ export default function ReportModal({ onClose, userCoords }) {
     setStep(s => s - 1);
   }
 
-  /* ── Submit ──────────────────────────────────────────────────────────────
-     POSTs to Flask /api/reports with the Firebase ID token in the header.
-     Flask runs NLP via analyze_report() then writes to Firestore.
-     Never write directly to Firestore here — that bypasses the NLP pipeline.
-  ───────────────────────────────────────────────────────────────────────── */
+  /* ── Submit ────────────────────────────────────────────────────────────── */
   async function handleSubmit() {
     setSubmitting(true);
     setSubmitErr('');
