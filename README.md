@@ -13,17 +13,19 @@
 ---
 
 ### Description
-**AfterHours** is a community-driven safety awareness **Progressive Web App (PWA)** designed to help citizens navigate public spaces with more confidence. By leveraging **Natural Language Processing (NLP)** and real-time community reporting, the system transforms raw safety descriptions into a dynamic, "vibe-based" risk heatmap.
+**AfterHours* is a community-driven safety awareness **Progressive Web App (PWA)** designed to help citizens navigate public spaces with more confidence. By leveraging **Natural Language Processing (NLP)** and real-time community reporting, the system transforms raw safety descriptions into a dynamic, "vibe-based" risk heatmap.
 
 The platform prioritizes **user privacy** through a privacy-first architecture that rotates session IDs and discards raw text after analysis, ensuring that community safety doesn't come at the cost of individual anonymity.
+
+Note: This is an Application Development Project made by an amature 2nd Year CompSci Student
 
 ---
 
 ### Key Features
-*   ** AI Sentiment Analysis**: Processes user-submitted descriptions to calculate risk scores using NLP.
-*   ** Real-time Heatmapping**: Visualizes safety data across Olongapo City using Leaflet.js.
-*   ** Privacy-First Design**: Implements session rotation and automated data purging to protect reporter identity.
-*   ** PWA Ready**: Optimized for a seamless experience on both mobile and desktop.
+*   *AI Sentiment Analysis*: Processes user-submitted descriptions to calculate risk scores using NLP.
+*   *Real-time Heatmapping*: Visualizes safety data across Olongapo City (Pilot Stage) using Leaflet.js.
+*   *Privacy-First Design*: Implements session rotation and automated data purging to protect reporter identity.
+*   *PWA Ready*: Optimized for a seamless experience mainly on mobile but usable on desktop too.
 
 ---
 
