@@ -8,48 +8,45 @@ import {
   where, 
   onSnapshot, 
   getDocs, 
-  writeBatch 
+  writeBatch,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc
 } from 'firebase/firestore';
 import './Profile.css';
 
 /** ₊˚ ✧ ━━━━⊱SVG Icons⊰━━━━ ✧ ₊˚ * */
 const IconBack = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-    <path d="M11 4L6 9L11 14" stroke="currentColor" strokeWidth="1.5"
-      strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M11 4L6 9L11 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 const IconShield = () => (
   <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden="true">
-    <path d="M8.5 1.5L2.5 4.5V8.5C2.5 12 5.2 15 8.5 16C11.8 15 14.5 12 14.5 8.5V4.5L8.5 1.5Z"
-      stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-    <path d="M5.5 8.5L7.5 10.5L11.5 6.5" stroke="currentColor" strokeWidth="1.2"
-      strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M8.5 1.5L2.5 4.5V8.5C2.5 12 5.2 15 8.5 16C11.8 15 14.5 12 14.5 8.5V4.5L8.5 1.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+    <path d="M5.5 8.5L7.5 10.5L11.5 6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 const IconRotate = () => (
   <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden="true">
-    <path d="M14 8.5A5.5 5.5 0 1 1 8.5 3H11M11 1V3V5" stroke="currentColor"
-      strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M14 8.5A5.5 5.5 0 1 1 8.5 3H11M11 1V3V5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 const IconTrash = () => (
   <svg width="17" height="17" viewBox="0 0 17 17" fill="none" aria-hidden="true">
-    <path d="M3 5H14M6 5V3.5C6 3 6.5 2.5 7 2.5H10C10.5 2.5 11 3 11 3.5V5M13 5L12.3 13.5C12.2 14.3 11.5 14.8 10.8 14.8H6.2C5.5 14.8 4.8 14.3 4.7 13.5L4 5"
-      stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M3 5H14M6 5V3.5C6 3 6.5 2.5 7 2.5H10C10.5 2.5 11 3 11 3.5V5M13 5L12.3 13.5C12.2 14.3 11.5 14.8 10.8 14.8H6.2C5.5 14.8 4.8 14.3 4.7 13.5L4 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 const IconChevron = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-    <path d="M5 3L9 7L5 11" stroke="currentColor" strokeWidth="1.3"
-      strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M5 3L9 7L5 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 const IconVerified = () => (
   <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
     <circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" strokeWidth="1.1"/>
-    <path d="M4 6.5L5.8 8.3L9 5" stroke="currentColor" strokeWidth="1.2"
-      strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M4 6.5L5.8 8.3L9 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -72,15 +69,11 @@ function Toggle({ checked, onChange, id, label }) {
 /** ₊˚ ✧ ━━━━⊱ DELETE CONFIRMATION MODAL ⊰━━━━ ✧ ₊˚ * */
 function DeleteModal({ onConfirm, onCancel }) {
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true"
-      aria-labelledby="modal-title">
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div className="modal-card">
         <div className="modal-icon"><IconTrash /></div>
         <h3 id="modal-title" className="modal-title">Delete all reports?</h3>
-        <p className="modal-desc">
-          This permanently removes all your submitted reports from our servers.
-          This action cannot be undone.
-        </p>
+        <p className="modal-desc">This permanently removes all your submitted reports from our servers. This action cannot be undone.</p>
         <div className="modal-actions">
           <button className="modal-btn modal-btn--cancel" onClick={onCancel}>Cancel</button>
           <button className="modal-btn modal-btn--confirm" onClick={onConfirm}>Yes, delete all</button>
@@ -96,33 +89,37 @@ export default function Profile() {
   const [user, setUser] = useState(null);
   const [sessionRotation, setSessionRotation] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-  const [stats, setStats] = useState({
-    submitted: 0,
-    verified: 0,
-    usersHelped: '0',
-    trustScore: 0,
-  });
+  const [stats, setStats] = useState({ submitted: 0, verified: 0, usersHelped: '0', trustScore: 0 });
 
   /** ── HELPERS ── */
-  
-  const setupSession = useCallback((uid) => {
+  const setupSession = useCallback((uid, rotationEnabled) => {
     const lastLoginUid = localStorage.getItem('last_login_uid');
-    if (sessionRotation && lastLoginUid !== uid) {
+    if (rotationEnabled && lastLoginUid !== uid) {
       const anonymousId = `session_${Math.random().toString(36).substr(2, 9)}`;
       localStorage.setItem('session_id', anonymousId);
       localStorage.setItem('last_login_uid', uid);
     }
-  }, [sessionRotation]);
+  }, []);
+
+  const fetchUserPrefs = useCallback(async (uid) => {
+    const userRef = doc(db, "users", uid);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const prefs = userSnap.data();
+      setSessionRotation(prefs.sessionRotation ?? true);
+      return prefs.sessionRotation ?? true;
+    } else {
+      await setDoc(userRef, { sessionRotation: true });
+      return true;
+    }
+  }, []);
 
   const listenToUserStats = useCallback((uid) => {
     const q = query(collection(db, "reports"), where("uid", "==", uid));
-    
     return onSnapshot(q, (snapshot) => {
       const reportCount = snapshot.size;
       const verifiedCount = snapshot.docs.filter(doc => doc.data().status === 'verified').length;
       const calculatedTrust = Math.min(reportCount * 5, 100);
-      
       setStats({
         submitted: reportCount,
         verified: verifiedCount,
@@ -131,14 +128,14 @@ export default function Profile() {
       });
     });
   }, []);
-  
 
   /** ── AUTH & DATA INIT ── */
   useEffect(() => {
-    const unsubscribeAuth = auth.onAuthStateChanged((u) => {
+    const unsubscribeAuth = auth.onAuthStateChanged(async (u) => {
       if (u) {
         setUser(u);
-        setupSession(u.uid);
+        const rotationEnabled = await fetchUserPrefs(u.uid);
+        setupSession(u.uid, rotationEnabled);
         const unsubscribeStats = listenToUserStats(u.uid);
         return () => unsubscribeStats();
       } else {
@@ -146,9 +143,17 @@ export default function Profile() {
       }
     });
     return () => unsubscribeAuth();
-  }, [navigate, setupSession, listenToUserStats]);
+  }, [navigate, fetchUserPrefs, setupSession, listenToUserStats]);
 
   /** ── HANDLERS ── */
+  const handleToggleRotation = async (newValue) => {
+    setSessionRotation(newValue);
+    if (user) {
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, { sessionRotation: newValue });
+    }
+  };
+
   async function handleLogout() {
     await signOut(auth);
     navigate('/login');
@@ -170,9 +175,7 @@ export default function Profile() {
 
   function getInitials() {
     if (!user) return '?';
-    if (user.displayName) {
-      return user.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-    }
+    if (user.displayName) return user.displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     return user.email?.[0]?.toUpperCase() ?? '?';
   }
 
@@ -192,7 +195,7 @@ export default function Profile() {
           <IconBack />
         </button>
         <h1 className="profile-header__title">Profile</h1>
-        <div className="back-btn" style={{ visibility: 'hidden' }} aria-hidden="true" />
+        <div style={{ width: '18px' }} aria-hidden="true" />
       </header>
 
       <main className="profile-scroll">
@@ -250,7 +253,7 @@ export default function Profile() {
               <label className="setting-row__title" htmlFor="session-rotation">Session Rotation</label>
               <p className="setting-row__desc">Cycles your anonymous ID so your reports can't be linked across visits</p>
             </div>
-            <Toggle id="session-rotation" checked={sessionRotation} onChange={setSessionRotation} />
+            <Toggle id="session-rotation" checked={sessionRotation} onChange={handleToggleRotation} />
           </div>
 
           <div className="profile-card setting-row setting-row--danger">
@@ -275,55 +278,29 @@ export default function Profile() {
 
       <nav className="bottom-nav">
         {[
-          {
-            key: 'map', label: 'Map',
-            icon: (
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <rect x="2" y="2" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.25)"/>
-                <rect x="13" y="2" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.25)"/>
-                <rect x="2" y="13" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.25)"/>
-                <rect x="13" y="13" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.25)"/>
-              </svg>
-            ),
-          },
-          {
-            key: 'reports', label: 'Reports',
-            icon: (
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <path d="M11 2C7.5 2 5 4.5 5 7.5C5 12 11 20 11 20C11 20 17 12 17 7.5C17 4.5 14.5 2 11 2Z"
-                  stroke="rgba(255,255,255,0.35)" strokeWidth="1.4" strokeLinejoin="round"/>
-                <circle cx="11" cy="7.5" r="2.2" stroke="rgba(255,255,255,0.35)" strokeWidth="1.4"/>
-              </svg>
-            ),
-          },
-          {
-            key: 'profile', label: 'Profile',
-            icon: (
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <circle cx="11" cy="8" r="4" stroke="var(--accent)" strokeWidth="1.4"/>
-                <path d="M4 20C4 16.7 7.1 14 11 14C14.9 14 18 16.7 18 20"
-                  stroke="var(--accent)" strokeWidth="1.4" strokeLinecap="round"/>
-              </svg>
-            ),
-          },
-          {
-            key: 'settings', label: 'Settings',
-            icon: (
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <circle cx="11" cy="11" r="3" stroke="rgba(255,255,255,0.35)" strokeWidth="1.4"/>
-                <path d="M11 2V4.5M11 17.5V20M2 11H4.5M17.5 11H20M4.9 4.9L6.7 6.7M15.3 15.3L17.1 17.1M4.9 17.1L6.7 15.3M15.3 6.7L17.1 4.9"
-                  stroke="rgba(255,255,255,0.35)" strokeWidth="1.4" strokeLinecap="round"/>
-              </svg>
-            ),
-          },
+          { key: 'map', label: 'Map', icon: (
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <rect x="2" y="2" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.25)"/><rect x="13" y="2" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.25)"/><rect x="2" y="13" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.25)"/><rect x="13" y="13" width="7" height="7" rx="1.5" fill="rgba(255,255,255,0.25)"/>
+            </svg>
+          )},
+          { key: 'reports', label: 'Reports', icon: (
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <path d="M11 2C7.5 2 5 4.5 5 7.5C5 12 11 20 11 20C11 20 17 12 17 7.5C17 4.5 14.5 2 11 2Z" stroke="rgba(255,255,255,0.35)" strokeWidth="1.4" strokeLinejoin="round"/><circle cx="11" cy="7.5" r="2.2" stroke="rgba(255,255,255,0.35)" strokeWidth="1.4"/>
+            </svg>
+          )},
+          { key: 'profile', label: 'Profile', icon: (
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <circle cx="11" cy="8" r="4" stroke="var(--accent)" strokeWidth="1.4"/><path d="M4 20C4 16.7 7.1 14 11 14C14.9 14 18 16.7 18 20" stroke="var(--accent)" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+          )},
+          { key: 'settings', label: 'Settings', icon: (
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <circle cx="11" cy="11" r="3" stroke="rgba(255,255,255,0.35)" strokeWidth="1.4"/><path d="M11 2V4.5M11 17.5V20M2 11H4.5M17.5 11H20M4.9 4.9L6.7 6.7M15.3 15.3L17.1 17.1M4.9 17.1L6.7 15.3M15.3 6.7L17.1 4.9" stroke="rgba(255,255,255,0.35)" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+          )},
         ].map(({ key, label, icon }) => (
-          <button
-            key={key}
-            className={`nav-item ${key === 'profile' ? 'nav-item--active' : ''}`}
-            onClick={() => key !== 'profile' && navigate(`/${key}`)}
-          >
-            {icon}
-            <span className="nav-item__label">{label}</span>
+          <button key={key} className={`nav-item ${key === 'profile' ? 'nav-item--active' : ''}`} onClick={() => key !== 'profile' && navigate(`/${key}`)}>
+            {icon}<span className="nav-item__label">{label}</span>
           </button>
         ))}
       </nav>
