@@ -116,7 +116,7 @@ export default function Profile() {
   }, [sessionRotation]);
 
   const listenToUserStats = useCallback((uid) => {
-    const q = query(collection(db, "reports"), where("userId", "==", uid));
+    const q = query(collection(db, "reports"), where("uid", "==", uid));
     
     return onSnapshot(q, (snapshot) => {
       const reportCount = snapshot.size;
