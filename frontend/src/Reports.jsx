@@ -8,6 +8,12 @@ import './Reports.css';
 /* ═══════════════════════════════════════════════════════════════════════════
    ICONS
 ═══════════════════════════════════════════════════════════════════════════ */
+const IconBack = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+    <path d="M11 4L6 9L11 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 const IconPin = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
     <path d="M5 1C3.3 1 2 2.3 2 4C2 6.3 5 9 5 9C5 9 8 6.3 8 4C8 2.3 6.7 1 5 1Z"
@@ -15,6 +21,7 @@ const IconPin = () => (
     <circle cx="5" cy="4" r="1.2" stroke="currentColor" strokeWidth="0.9"/>
   </svg>
 );
+
 const IconClock = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
     <circle cx="5" cy="5" r="3.8" stroke="currentColor" strokeWidth="0.9"/>
@@ -22,18 +29,21 @@ const IconClock = () => (
       strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
+
 const IconAI = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
     <circle cx="5" cy="5" r="3.8" stroke="currentColor" strokeWidth="0.9"/>
     <path d="M3 5H7M5 3V7" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round"/>
   </svg>
 );
+
 const IconClose = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
     <path d="M3 3L13 13M13 3L3 13" stroke="currentColor"
       strokeWidth="1.5" strokeLinecap="round"/>
   </svg>
 );
+
 const IconChevronRight = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
     <path d="M5 3L9 7L5 11" stroke="currentColor" strokeWidth="1.3"
@@ -509,10 +519,14 @@ export default function Reports() {
     <div className="reports-root">
 
       <header className="reports-header">
+        <button className="back-btn" onClick={() => navigate('/home')} aria-label="Back to map">
+          <IconBack />
+        </button>
+        
         <h1 className="reports-header__title">Your Reports</h1>
-        <span className="reports-header__count">
-          {loading ? '…' : `${reports.length} total`}
-        </span>
+        
+        {/* Empty div to balance the flexbox so the title stays centered */}
+        <div style={{ width: '36px' }} aria-hidden="true" />
       </header>
 
       <main className="reports-scroll">

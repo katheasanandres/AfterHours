@@ -5,12 +5,19 @@ import './ReportModal.css';
 /* ═══════════════════════════════════════════════════════════════════════════
    ICONS
 ═══════════════════════════════════════════════════════════════════════════ */
+const IconBack = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+    <path d="M11 4L6 9L11 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 const IconClose = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
     <path d="M3 3L13 13M13 3L3 13" stroke="currentColor"
       strokeWidth="1.5" strokeLinecap="round"/>
   </svg>
 );
+
 const IconCheck = () => (
   <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
     <circle cx="14" cy="14" r="13" stroke="var(--green)" strokeWidth="1.5"/>
@@ -18,6 +25,7 @@ const IconCheck = () => (
       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
+
 const IconShield = () => (
   <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
     <path d="M6.5 1L2 3.5V7C2 10 4.5 12 6.5 12.5C8.5 12 11 10 11 7V3.5L6.5 1Z"
