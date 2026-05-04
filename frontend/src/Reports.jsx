@@ -28,22 +28,32 @@ const IconAI = () => (
     <path d="M3 5H7M5 3V7" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round"/>
   </svg>
 );
+const IconClose = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path d="M3 3L13 13M13 3L3 13" stroke="currentColor"
+      strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+const IconChevronRight = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+    <path d="M5 3L9 7L5 11" stroke="currentColor" strokeWidth="1.3"
+      strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
 
 /* ═══════════════════════════════════════════════════════════════════════════
    CONSTANTS
 ═══════════════════════════════════════════════════════════════════════════ */
 const FILTER_GROUPS = [
   {
-    id: 'status',
-    label: 'Status',
+    id: 'status', label: 'Status',
     filters: [
       { id: 'pending',  label: 'Pending',  color: 'amber' },
       { id: 'resolved', label: 'Resolved', color: 'green' },
     ],
   },
   {
-    id: 'urgency',
-    label: 'Urgency',
+    id: 'urgency', label: 'Urgency',
     filters: [
       { id: 'high',     label: 'High Severity', color: 'red'   },
       { id: 'moderate', label: 'Moderate',       color: 'amber' },
@@ -51,23 +61,20 @@ const FILTER_GROUPS = [
     ],
   },
   {
-    id: 'proximity',
-    label: 'Proximity',
+    id: 'proximity', label: 'Proximity',
     filters: [
       { id: 'near_me', label: 'Near Me (500m)', color: 'blue' },
     ],
   },
   {
-    id: 'recency',
-    label: 'Recency',
+    id: 'recency', label: 'Recency',
     filters: [
-      { id: 'recent',     label: 'Last 24 hrs',         color: 'blue'   },
+      { id: 'recent',     label: 'Last 24 hrs',           color: 'blue'   },
       { id: 'late_night', label: 'Late Night (10PM–4AM)', color: 'purple' },
     ],
   },
 ];
 
-// Maps Firestore category IDs → readable labels
 const CAT_LABELS = {
   poor_lighting:         'Poor Lighting',
   loitering:             'Suspicious Loitering',
@@ -78,7 +85,6 @@ const CAT_LABELS = {
   other:                 'Other',
 };
 
-// Maps category IDs → environmental | social | general
 const CAT_TYPE = {
   poor_lighting:         'Environmental',
   loitering:             'Social',
@@ -89,43 +95,61 @@ const CAT_TYPE = {
   other:                 'General',
 };
 
+const CAT_EMOJI = {
+  poor_lighting:         '🔦',
+  loitering:             '👥',
+  catcalling:            '📢',
+  broken_infrastructure: '🚧',
+  unsafe_vehicle:        '🚗',
+  no_bystanders:         '🏚️',
+  other:                 '⚠️',
+};
+
 /* ═══════════════════════════════════════════════════════════════════════════
    HELPERS
 ═══════════════════════════════════════════════════════════════════════════ */
-
-/** Converts a Firestore Timestamp or ISO string to a relative label */
 function timeAgo(timestamp) {
   if (!timestamp) return 'Unknown';
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-  const diff  = (Date.now() - date.getTime()) / 1000; // seconds ago
-
-  if (diff < 60)          return 'Just now';
-  if (diff < 3600)        return `${Math.floor(diff / 60)} min ago`;
-  if (diff < 86400)       return `${Math.floor(diff / 3600)} hr${Math.floor(diff / 3600) > 1 ? 's' : ''} ago`;
-  if (diff < 86400 * 2)   return 'Yesterday';
-  if (diff < 86400 * 7)   return `${Math.floor(diff / 86400)} days ago`;
+  const diff = (Date.now() - date.getTime()) / 1000;
+  if (diff < 60)        return 'Just now';
+  if (diff < 3600)      return `${Math.floor(diff / 60)} min ago`;
+  if (diff < 86400)     return `${Math.floor(diff / 3600)} hr${Math.floor(diff / 3600) > 1 ? 's' : ''} ago`;
+  if (diff < 86400 * 2) return 'Yesterday';
+  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)} days ago`;
   return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
 }
 
-/** Returns true if report was submitted between 10PM and 4AM */
+function fullDateTime(timestamp) {
+  if (!timestamp) return 'Unknown';
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  return date.toLocaleString('en-PH', {
+    weekday: 'long',
+    year:    'numeric',
+    month:   'long',
+    day:     'numeric',
+    hour:    'numeric',
+    minute:  '2-digit',
+    hour12:  true,
+  });
+}
+
 function isLateNight(timestamp) {
   if (!timestamp) return false;
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-  const h    = date.getHours();
+  const h = date.getHours();
   return h >= 22 || h < 4;
 }
 
-/** Returns true if report was submitted within the last 24 hours */
 function isRecent(timestamp) {
   if (!timestamp) return false;
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
   return (Date.now() - date.getTime()) < 86400 * 1000;
 }
 
-/** Returns true if report is within ~500m of user (rough degree estimate) */
 function isNearMe(report, coords) {
   if (!coords || !report.location?.lat || !report.location?.lng) return false;
-  const RADIUS = 0.0045; // ~500m in degrees
+  const RADIUS = 0.0045;
   return (
     Math.abs(report.location.lat - coords.lat) < RADIUS &&
     Math.abs(report.location.lng - coords.lng) < RADIUS
@@ -148,62 +172,59 @@ function FilterChip({ filter, active, onClick }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   REPORT CARD
+   REPORT CARD  (tappable — opens detail sheet)
 ═══════════════════════════════════════════════════════════════════════════ */
-function ReportCard({ report }) {
-  // Use effective_urgency (NLP-adjusted) for the color, fall back to user urgency
+function ReportCard({ report, onTap }) {
   const displayUrgency = report.effective_urgency ?? report.urgency ?? 'low';
   const urgencyColor   = { high: 'red', moderate: 'amber', low: 'gray' }[displayUrgency] ?? 'gray';
   const statusColor    = report.status === 'resolved' ? 'green' : 'amber';
-
-  const catLabel  = CAT_LABELS[report.category]  ?? report.category  ?? 'Unknown';
-  const catType   = CAT_TYPE[report.category]    ?? 'General';
-  const aiLabel   = CAT_LABELS[report.ai_category] ?? null;
-
-  // Show an AI badge if NLP changed the category
+  const catLabel       = CAT_LABELS[report.category]    ?? report.category    ?? 'Unknown';
+  const catType        = CAT_TYPE[report.category]      ?? 'General';
+  const aiLabel        = CAT_LABELS[report.ai_category] ?? null;
   const showAIMismatch = report.category_mismatch && aiLabel;
 
   return (
-    <article className={`report-card report-card--${urgencyColor}`}>
+    <article
+      className={`report-card report-card--${urgencyColor} report-card--tappable`}
+      onClick={() => onTap(report)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onTap(report)}
+      aria-label={`View details for ${catLabel} report`}
+    >
       <div className="report-card__top">
         <span className="report-card__category">{catLabel}</span>
-        <span className={`status-pill status-pill--${statusColor}`}>
-          {report.status === 'resolved' ? 'Resolved' : 'Pending'}
-        </span>
+        <div className="report-card__top-right">
+          <span className={`status-pill status-pill--${statusColor}`}>
+            {report.status === 'resolved' ? 'Resolved' : 'Pending'}
+          </span>
+          <span className="report-card__chevron"><IconChevronRight /></span>
+        </div>
       </div>
 
-      {/* Location row */}
       {report.location && (
         <div className="report-card__loc">
           <IconPin />
-          <span>
-            {report.location.lat?.toFixed(4)}, {report.location.lng?.toFixed(4)}
-          </span>
+          <span>{report.location.lat?.toFixed(4)}, {report.location.lng?.toFixed(4)}</span>
         </div>
       )}
 
-      {/* Meta row */}
       <div className="report-card__meta">
         <span className="meta-tag">{catType}</span>
         <span className={`meta-tag meta-tag--${urgencyColor}`}>
-          {displayUrgency === 'high'     ? 'High Severity' :
-           displayUrgency === 'moderate' ? 'Moderate'      : 'Low Severity'}
+          {displayUrgency === 'high' ? 'High Severity' :
+           displayUrgency === 'moderate' ? 'Moderate' : 'Low Severity'}
         </span>
-
-        {/* AI override badge — shown when NLP disagreed with user selection */}
         {showAIMismatch && (
           <span className="meta-tag meta-tag--ai" title={`AI classified as: ${aiLabel}`}>
             <IconAI /> AI: {aiLabel}
           </span>
         )}
-
         <span className="report-card__time">
-          <IconClock />
-          {timeAgo(report.timestamp)}
+          <IconClock />{timeAgo(report.timestamp)}
         </span>
       </div>
 
-      {/* Description preview if available */}
       {report.description && (
         <p className="report-card__desc">"{report.description}"</p>
       )}
@@ -212,49 +233,244 @@ function ReportCard({ report }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   REPORT DETAIL SHEET
+   Slides up from the bottom when a card is tapped.
+═══════════════════════════════════════════════════════════════════════════ */
+function ReportDetailSheet({ report, onClose }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 20);
+    return () => clearTimeout(t);
+  }, []);
+
+  function handleClose() {
+    setVisible(false);
+    setTimeout(onClose, 340);
+  }
+
+  function handleOverlay(e) {
+    if (e.target === e.currentTarget) handleClose();
+  }
+
+  if (!report) return null;
+
+  const displayUrgency = report.effective_urgency ?? report.urgency ?? 'low';
+  const urgencyColor   = { high: 'red', moderate: 'amber', low: 'gray' }[displayUrgency] ?? 'gray';
+  const statusColor    = report.status === 'resolved' ? 'green' : 'amber';
+  const catLabel       = CAT_LABELS[report.category]     ?? report.category    ?? 'Unknown';
+  const catType        = CAT_TYPE[report.category]       ?? 'General';
+  const catEmoji       = CAT_EMOJI[report.category]      ?? '⚠️';
+  const aiCatLabel     = CAT_LABELS[report.ai_category]  ?? report.ai_category ?? null;
+  const aiUrgLabel     = report.ai_urgency
+    ? report.ai_urgency.charAt(0).toUpperCase() + report.ai_urgency.slice(1)
+    : null;
+
+  const urgencyLabel = displayUrgency === 'high' ? 'High Severity'
+                     : displayUrgency === 'moderate' ? 'Moderate'
+                     : 'Low Severity';
+
+  return (
+    <div
+      className={`detail-overlay ${visible ? 'detail-overlay--in' : ''}`}
+      onClick={handleOverlay}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Report details"
+    >
+      <div className={`detail-sheet ${visible ? 'detail-sheet--in' : ''}`}>
+
+        {/* drag handle */}
+        <div className="detail-handle" aria-hidden="true" />
+
+        {/* header */}
+        <div className="detail-header">
+          <div className="detail-header__emoji" aria-hidden="true">{catEmoji}</div>
+          <div className="detail-header__text">
+            <h2 className="detail-header__title">{catLabel}</h2>
+            <p className="detail-header__type">{catType}</p>
+          </div>
+          <button className="detail-close" onClick={handleClose} aria-label="Close">
+            <IconClose />
+          </button>
+        </div>
+
+        {/* status + urgency badges */}
+        <div className="detail-badges">
+          <span className={`detail-badge detail-badge--${statusColor}`}>
+            {report.status === 'resolved' ? '✓ Resolved' : '⏳ Pending'}
+          </span>
+          <span className={`detail-badge detail-badge--${urgencyColor}`}>
+            {urgencyLabel}
+          </span>
+        </div>
+
+        {/* scrollable body */}
+        <div className="detail-body">
+
+          {/* When */}
+          <div className="detail-section">
+            <p className="detail-section__label">Date &amp; Time</p>
+            <p className="detail-section__value">{fullDateTime(report.timestamp)}</p>
+            {isLateNight(report.timestamp) && (
+              <span className="detail-tag detail-tag--purple">🌙 Late Night</span>
+            )}
+            {isRecent(report.timestamp) && (
+              <span className="detail-tag detail-tag--blue">🕐 Within 24 hrs</span>
+            )}
+          </div>
+
+          {/* Where */}
+          {report.location && (
+            <div className="detail-section">
+              <p className="detail-section__label">Location</p>
+              <p className="detail-section__value detail-section__value--mono">
+                {report.location.lat?.toFixed(6)}, {report.location.lng?.toFixed(6)}
+              </p>
+              <a
+                className="detail-map-link"
+                href={`https://www.google.com/maps?q=${report.location.lat},${report.location.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View on Google Maps ↗
+              </a>
+            </div>
+          )}
+
+          {/* Description */}
+          {report.description ? (
+            <div className="detail-section">
+              <p className="detail-section__label">Your description</p>
+              <p className="detail-section__desc">"{report.description}"</p>
+            </div>
+          ) : (
+            <div className="detail-section">
+              <p className="detail-section__label">Your description</p>
+              <p className="detail-section__empty">No description provided</p>
+            </div>
+          )}
+
+          {/* NLP Analysis */}
+          <div className="detail-section">
+            <p className="detail-section__label">AI Analysis</p>
+            <div className="detail-nlp-card">
+
+              <div className="detail-nlp-row">
+                <span className="detail-nlp-key">Category detected</span>
+                <span className={`detail-nlp-val ${report.category_mismatch ? 'detail-nlp-val--mismatch' : 'detail-nlp-val--match'}`}>
+                  {aiCatLabel ?? '—'}
+                  {report.category_mismatch && (
+                    <span className="detail-nlp-note"> (differs from your pick)</span>
+                  )}
+                </span>
+              </div>
+
+              <div className="detail-nlp-row">
+                <span className="detail-nlp-key">Urgency detected</span>
+                <span className={`detail-nlp-val ${report.urgency_mismatch ? 'detail-nlp-val--mismatch' : 'detail-nlp-val--match'}`}>
+                  {aiUrgLabel ?? '—'}
+                  {report.urgency_mismatch && (
+                    <span className="detail-nlp-note"> (differs from your pick)</span>
+                  )}
+                </span>
+              </div>
+
+              <div className="detail-nlp-row">
+                <span className="detail-nlp-key">Effective urgency</span>
+                <span className="detail-nlp-val">
+                  {report.effective_urgency
+                    ? report.effective_urgency.charAt(0).toUpperCase() + report.effective_urgency.slice(1)
+                    : '—'}
+                  <span className="detail-nlp-note"> (used on heatmap)</span>
+                </span>
+              </div>
+
+              <div className="detail-nlp-row">
+                <span className="detail-nlp-key">Category confidence</span>
+                <span className="detail-nlp-val">
+                  {report.category_confidence != null
+                    ? `${Math.round(report.category_confidence * 100)}%`
+                    : '—'}
+                </span>
+              </div>
+
+              <div className="detail-nlp-row">
+                <span className="detail-nlp-key">Urgency confidence</span>
+                <span className="detail-nlp-val">
+                  {report.urgency_confidence != null
+                    ? `${Math.round(report.urgency_confidence * 100)}%`
+                    : '—'}
+                </span>
+              </div>
+
+              {report.low_confidence && (
+                <p className="detail-nlp-disclaimer">
+                  ⚠️ No description was provided — AI ran on the category label only.
+                  Confidence is lower than usual.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Report ID (for transparency) */}
+          <div className="detail-section">
+            <p className="detail-section__label">Report ID</p>
+            <p className="detail-section__value detail-section__value--mono detail-section__value--muted">
+              {report.id}
+            </p>
+          </div>
+
+        </div>
+
+        {/* close button */}
+        <div className="detail-footer">
+          <button className="detail-footer-btn" onClick={handleClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════════════════════ */
+// ... (keep all your imports and Icon/Constant/Helper components the same)
+
 export default function Reports() {
   const navigate = useNavigate();
   const { coords } = useLocation();
 
-  // ── Firestore state ────────────────────────────────────────────────────
-  const [reports,  setReports]  = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [fetchErr, setFetchErr] = useState('');
+  const [reports,          setReports]        = useState([]);
+  const [loading,          setLoading]        = useState(true);
+  const [fetchErr,         setFetchErr]       = useState('');
+  const [selectedReport, setSelectedReport] = useState(null); 
 
-  // ── Filter state ───────────────────────────────────────────────────────
   const [active, setActive] = useState({
-    status:    null,
-    urgency:   null,
-    proximity: null,
-    recency:   null,
+    status: null, urgency: null, proximity: null, recency: null,
   });
 
-  // ── Load user's reports from Firestore in real-time ────────────────────
+  // ── Real-time Firestore query ───────────────────────────
   useEffect(() => {
     const user = auth.currentUser;
-    if (!user) {
-      navigate('/login');
-      return;
-    }
+    if (!user) { navigate('/login'); return; }
 
-    // Query: only this user's reports, newest first
+    const uid = user.uid; 
+
     const q = query(
       collection(db, 'reports'),
-      where('uid', '==', user.uid),
+      where('uid', '==', uid),
       orderBy('timestamp', 'desc'),
     );
 
-    const unsub = onSnapshot(
-      q,
+    const unsub = onSnapshot(q,
       (snapshot) => {
-        const docs = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setReports(docs);
-        setLoading(false);
+        setReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        // ESLINT FIX: Use a tiny timeout to ensure the state update 
+        // happens AFTER the initial render cycle completes.
+        setTimeout(() => setLoading(false), 0);
       },
       (err) => {
         console.error('Firestore error:', err);
@@ -266,55 +482,38 @@ export default function Reports() {
     return () => unsub();
   }, [navigate]);
 
-  // ── Filter logic — runs client-side on the Firestore data ──────────────
-  const filtered = useMemo(() => {
-    return reports.filter(r => {
-      // Status
-      if (active.status && r.status !== active.status) return false;
+  // ... (keep the rest of your filtering, stats, and return JSX exactly as it was)
 
-      // Urgency — match against effective_urgency (NLP-adjusted) first
-      if (active.urgency) {
-        const urg = r.effective_urgency ?? r.urgency;
-        if (urg !== active.urgency) return false;
-      }
+  // ── Client-side filtering ──────────────────────────────────────────────
+  const filtered = useMemo(() => reports.filter(r => {
+    if (active.status  && r.status !== active.status) return false;
+    if (active.urgency) {
+      if ((r.effective_urgency ?? r.urgency) !== active.urgency) return false;
+    }
+    if (active.proximity === 'near_me'    && !isNearMe(r, coords))      return false;
+    if (active.recency   === 'recent'     && !isRecent(r.timestamp))    return false;
+    if (active.recency   === 'late_night' && !isLateNight(r.timestamp)) return false;
+    return true;
+  }), [reports, active, coords]);
 
-      // Proximity — within ~500m of user
-      if (active.proximity === 'near_me' && !isNearMe(r, coords)) return false;
-
-      // Recency
-      if (active.recency === 'recent'     && !isRecent(r.timestamp))   return false;
-      if (active.recency === 'late_night' && !isLateNight(r.timestamp)) return false;
-
-      return true;
-    });
-  }, [reports, active, coords]);
-
-  // ── Stats derived from full (unfiltered) dataset ───────────────────────
   const stats = useMemo(() => ({
-    submitted:    reports.length,
-    resolved:     reports.filter(r => r.status === 'resolved').length,
-    aiProcessed:  reports.filter(r => r.ai_category != null).length,
+    submitted:   reports.length,
+    resolved:    reports.filter(r => r.status === 'resolved').length,
+    aiProcessed: reports.filter(r => r.ai_category != null).length,
   }), [reports]);
 
-  // ── Helpers ────────────────────────────────────────────────────────────
   function toggleFilter(groupId, filterId) {
-    setActive(prev => ({
-      ...prev,
-      [groupId]: prev[groupId] === filterId ? null : filterId,
-    }));
+    setActive(prev => ({ ...prev, [groupId]: prev[groupId] === filterId ? null : filterId }));
   }
-
   function clearAll() {
     setActive({ status: null, urgency: null, proximity: null, recency: null });
   }
 
   const hasActiveFilters = Object.values(active).some(Boolean);
 
-  /* ── JSX ── */
   return (
     <div className="reports-root">
 
-      {/* ── HEADER ──────────────────────────────────────────────────────── */}
       <header className="reports-header">
         <h1 className="reports-header__title">Your Reports</h1>
         <span className="reports-header__count">
@@ -324,11 +523,10 @@ export default function Reports() {
 
       <main className="reports-scroll">
 
-        {/* ── IMPACT CARD ─────────────────────────────────────────────── */}
+        {/* Impact card */}
         <div className="impact-card">
           <div className="impact-card__title">
-            Your impact
-            <span className="impact-badge">All time</span>
+            Your impact <span className="impact-badge">All time</span>
           </div>
           <div className="impact-card__stats">
             <div className="impact-stat">
@@ -354,17 +552,14 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* ── FILTERS ─────────────────────────────────────────────────── */}
+        {/* Filters */}
         <div className="filter-section">
           <div className="filter-section__header">
             <span className="filter-section__label">Filter</span>
             {hasActiveFilters && (
-              <button className="clear-btn" onClick={clearAll}>
-                Clear all
-              </button>
+              <button className="clear-btn" onClick={clearAll}>Clear all</button>
             )}
           </div>
-
           {FILTER_GROUPS.map(group => (
             <div key={group.id} className="filter-group">
               <span className="filter-group__label">{group.label}</span>
@@ -382,7 +577,7 @@ export default function Reports() {
           ))}
         </div>
 
-        {/* ── REPORT LIST ─────────────────────────────────────────────── */}
+        {/* Report list */}
         <div className="report-list">
           <div className="report-list__header">
             <span className="report-list__count">
@@ -391,9 +586,11 @@ export default function Reports() {
                  ? `All ${reports.length} report${reports.length !== 1 ? 's' : ''}`
                  : `${filtered.length} of ${reports.length} reports`}
             </span>
+            {!loading && reports.length > 0 && (
+              <span className="report-list__hint">Tap a report for details</span>
+            )}
           </div>
 
-          {/* Error state */}
           {fetchErr && (
             <div className="empty-state">
               <p className="empty-state__title">Something went wrong</p>
@@ -401,7 +598,6 @@ export default function Reports() {
             </div>
           )}
 
-          {/* Loading skeleton */}
           {loading && !fetchErr && (
             <>
               <div className="report-card-skeleton" aria-hidden="true" />
@@ -410,94 +606,68 @@ export default function Reports() {
             </>
           )}
 
-          {/* No reports at all */}
           {!loading && !fetchErr && reports.length === 0 && (
             <div className="empty-state">
               <p className="empty-state__title">No reports yet</p>
-              <p className="empty-state__sub">
-                Submit your first report from the map screen
-              </p>
+              <p className="empty-state__sub">Submit your first report from the map screen</p>
             </div>
           )}
 
-          {/* Filter returned nothing */}
           {!loading && !fetchErr && reports.length > 0 && filtered.length === 0 && (
             <div className="empty-state">
               <p className="empty-state__title">No reports match</p>
               <p className="empty-state__sub">Try clearing some filters</p>
-              <button className="empty-clear-btn" onClick={clearAll}>
-                Clear filters
-              </button>
+              <button className="empty-clear-btn" onClick={clearAll}>Clear filters</button>
             </div>
           )}
 
-          {/* Real report cards */}
           {!loading && !fetchErr && filtered.map(report => (
-            <ReportCard key={report.id} report={report} />
+            <ReportCard
+              key={report.id}
+              report={report}
+              onTap={setSelectedReport}
+            />
           ))}
         </div>
 
         <div style={{ height: '24px' }} aria-hidden="true" />
       </main>
 
-      {/* ── BOTTOM NAV ──────────────────────────────────────────────────── */}
+      {/* Bottom nav */}
       <nav className="bottom-nav" aria-label="Main navigation">
         {[
-          {
-            key: 'home', label: 'Map',
-            icon: (a) => (
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <rect x="2"  y="2"  width="7" height="7" rx="1.5" fill={a ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
-                <rect x="13" y="2"  width="7" height="7" rx="1.5" fill={a ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
-                <rect x="2"  y="13" width="7" height="7" rx="1.5" fill={a ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
-                <rect x="13" y="13" width="7" height="7" rx="1.5" fill={a ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
-              </svg>
-            ),
-          },
-          {
-            key: 'reports', label: 'Reports',
-            icon: (a) => (
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <path d="M11 2C7.5 2 5 4.5 5 7.5C5 12 11 20 11 20C11 20 17 12 17 7.5C17 4.5 14.5 2 11 2Z"
-                  stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'}
-                  strokeWidth="1.4" strokeLinejoin="round"/>
-                <circle cx="11" cy="7.5" r="2.2"
-                  stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'}
-                  strokeWidth="1.4"/>
-              </svg>
-            ),
-          },
-          {
-            key: 'profile', label: 'Profile',
-            icon: (a) => (
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <circle cx="11" cy="8" r="4"
-                  stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'}
-                  strokeWidth="1.4"/>
-                <path d="M4 20C4 16.7 7.1 14 11 14C14.9 14 18 16.7 18 20"
-                  stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'}
-                  strokeWidth="1.4" strokeLinecap="round"/>
-              </svg>
-            ),
-          },
-          {
-            key: 'settings', label: 'Settings',
-            icon: (a) => (
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <circle cx="11" cy="11" r="3"
-                  stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'}
-                  strokeWidth="1.4"/>
-                <path d="M11 2V4.5M11 17.5V20M2 11H4.5M17.5 11H20M4.9 4.9L6.7 6.7M15.3 15.3L17.1 17.1M4.9 17.1L6.7 15.3M15.3 6.7L17.1 4.9"
-                  stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'}
-                  strokeWidth="1.4" strokeLinecap="round"/>
-              </svg>
-            ),
-          },
+          { key: 'home', label: 'Map', icon: (a) => (
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <rect x="2"  y="2"  width="7" height="7" rx="1.5" fill={a ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
+              <rect x="13" y="2"  width="7" height="7" rx="1.5" fill={a ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
+              <rect x="2"  y="13" width="7" height="7" rx="1.5" fill={a ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
+              <rect x="13" y="13" width="7" height="7" rx="1.5" fill={a ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
+            </svg>
+          )},
+          { key: 'reports', label: 'Reports', icon: (a) => (
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <path d="M11 2C7.5 2 5 4.5 5 7.5C5 12 11 20 11 20C11 20 17 12 17 7.5C17 4.5 14.5 2 11 2Z"
+                stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4" strokeLinejoin="round"/>
+              <circle cx="11" cy="7.5" r="2.2" stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4"/>
+            </svg>
+          )},
+          { key: 'profile', label: 'Profile', icon: (a) => (
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <circle cx="11" cy="8" r="4" stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4"/>
+              <path d="M4 20C4 16.7 7.1 14 11 14C14.9 14 18 16.7 18 20" stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+          )},
+          { key: 'settings', label: 'Settings', icon: (a) => (
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <circle cx="11" cy="11" r="3" stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4"/>
+              <path d="M11 2V4.5M11 17.5V20M2 11H4.5M17.5 11H20M4.9 4.9L6.7 6.7M15.3 15.3L17.1 17.1M4.9 17.1L6.7 15.3M15.3 6.7L17.1 4.9"
+                stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+          )},
         ].map(({ key, label, icon }) => {
           const isActive = key === 'reports';
           return (
-            <button
-              key={key}
+            <button key={key}
               className={`nav-item ${isActive ? 'nav-item--active' : ''}`}
               onClick={() => key !== 'reports' && navigate(`/${key}`)}
               aria-current={isActive ? 'page' : undefined}
@@ -508,6 +678,14 @@ export default function Reports() {
           );
         })}
       </nav>
+
+      {/* Detail sheet — mounts when a card is tapped */}
+      {selectedReport && (
+        <ReportDetailSheet
+          report={selectedReport}
+          onClose={() => setSelectedReport(null)}
+        />
+      )}
     </div>
   );
 }
