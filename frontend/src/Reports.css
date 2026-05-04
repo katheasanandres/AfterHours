@@ -1,3 +1,7 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   AfterHours — Reports.css
+═══════════════════════════════════════════════════════════════════════════ */
+
 .reports-root {
   display: flex;
   flex-direction: column;
@@ -8,7 +12,7 @@
   overflow: hidden;
 }
 
-/* * ₊˚ ✧ ━━━━⊱ HEADER ⊰━━━━ ✧ ₊˚ * */
+/* ─── HEADER ────────────────────────────────────────────────────────────── */
 .reports-header {
   display: flex;
   align-items: baseline;
@@ -32,7 +36,7 @@
   color: var(--txt3);
 }
 
-/* * ₊˚ ✧ ━━━━⊱ SCROLL AREA ⊰━━━━ ✧ ₊˚ * */
+/* ─── SCROLL AREA ───────────────────────────────────────────────────────── */
 .reports-scroll {
   flex: 1;
   overflow-y: auto;
@@ -42,7 +46,7 @@
 }
 .reports-scroll::-webkit-scrollbar { display: none; }
 
-/* * ₊˚ ✧ ━━━━⊱ IMPACT CARD ⊰━━━━ ✧ ₊˚ * */
+/* ─── IMPACT CARD ───────────────────────────────────────────────────────── */
 .impact-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -109,7 +113,7 @@
   flex-shrink: 0;
 }
 
-/* * ₊˚ ✧ ━━━━⊱ FILTER SECTION ⊰━━━━ ✧ ₊˚ * */
+/* ─── FILTER SECTION ────────────────────────────────────────────────────── */
 .filter-section {
   margin-bottom: 14px;
 }
@@ -143,7 +147,7 @@
 }
 .clear-btn:hover { opacity: 0.7; }
 
-/* * ₊˚ ✧ ━━━━⊱ FILTER GROUP ⊰━━━━ ✧ ₊˚ * */
+/* ─── FILTER GROUP ──────────────────────────────────────────────────────── */
 .filter-group {
   margin-bottom: 10px;
 }
@@ -163,7 +167,7 @@
   gap: 6px;
 }
 
-/* * ₊˚ ✧ ━━━━⊱ FILTER CHIPS ⊰━━━━ ✧ ₊˚ * */
+/* ─── FILTER CHIPS ──────────────────────────────────────────────────────── */
 .filter-chip {
   padding: 6px 13px;
   border-radius: 20px;
@@ -221,7 +225,7 @@
   border-color: rgba(139,92,246,0.45);
 }
 
-/* * ₊˚ ✧ ━━━━⊱ REPORT LIST ⊰━━━━ ✧ ₊˚ * */
+/* ─── REPORT LIST ───────────────────────────────────────────────────────── */
 .report-list__header {
   display: flex;
   align-items: center;
@@ -235,7 +239,7 @@
   font-weight: 500;
 }
 
-/* * ₊˚ ✧ ━━━━⊱ REPORT CARD ⊰━━━━ ✧ ₊˚ * */
+/* ─── REPORT CARD ───────────────────────────────────────────────────────── */
 .report-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -244,6 +248,7 @@
   margin-bottom: 8px;
   position: relative;
   overflow: hidden;
+  /* left accent bar via pseudo-element */
 }
 
 .report-card::before {
@@ -322,6 +327,30 @@
 .meta-tag--amber { background: rgba(245,158,11,0.12);    color: var(--amber); }
 .meta-tag--gray  { background: var(--surface3);          color: var(--txt3); }
 
+/* AI override badge — shows when NLP disagreed with user selection */
+.meta-tag--ai {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(139,92,246,0.12);
+  color: #a78bfa;
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-size: 10px;
+}
+
+/* description preview */
+.report-card__desc {
+  font-size: 11px;
+  color: var(--txt3);
+  font-style: italic;
+  margin-top: 8px;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .report-card__time {
   display: flex;
   align-items: center;
@@ -331,7 +360,35 @@
   margin-left: auto;
 }
 
-/* * ₊˚ ✧ ━━━━⊱ EMPTY STATE ⊰━━━━ ✧ ₊˚ * */
+/* ─── SKELETON LOADER ───────────────────────────────────────────────────── */
+.report-card-skeleton {
+  height: 90px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  margin-bottom: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.report-card-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.04) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.4s ease-in-out infinite;
+  background-size: 200% 100%;
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* ─── EMPTY STATE ───────────────────────────────────────────────────────── */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -368,7 +425,7 @@
 }
 .empty-clear-btn:hover { background: var(--accent-dim); }
 
-/* * ₊˚ ✧ ━━━━⊱ BOTTOM NAV ⊰━━━━ ✧ ₊˚ * */
+/* ─── BOTTOM NAV ────────────────────────────────────────────────────────── */
 .bottom-nav {
   position: fixed;
   bottom: 0; left: 0; right: 0;
@@ -405,7 +462,7 @@
 }
 .nav-item--active .nav-item__label { color: var(--accent); }
 
-/* * ₊˚ ✧ ━━━━⊱ RESPONSIVE ⊰━━━━ ✧ ₊˚ * */
+/* ─── RESPONSIVE ────────────────────────────────────────────────────────── */
 @media (min-width: 480px) {
   .reports-root { max-width: 430px; margin: 0 auto; box-shadow: 0 0 60px rgba(0,0,0,0.5); }
   .bottom-nav   { max-width: 430px; left: 50%; transform: translateX(-50%); }
