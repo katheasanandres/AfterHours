@@ -5,12 +5,6 @@ import './ReportModal.css';
 /* ═══════════════════════════════════════════════════════════════════════════
    ICONS
 ═══════════════════════════════════════════════════════════════════════════ */
-const IconBack = () => (
-  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-    <path d="M11 4L6 9L11 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
 const IconClose = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
     <path d="M3 3L13 13M13 3L3 13" stroke="currentColor"
