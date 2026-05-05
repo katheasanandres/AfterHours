@@ -135,7 +135,7 @@ const SECTIONS = [
     color: 'red',
     title: 'Limitation of Liability',
     body: [
-      'AfterHours and its developers provide this application on an "as is" and "as available" basis. We make no warranties, expressed or implied, regarding:',
+      'AfterHours and its developer provide this application on an "as is" and "as available" basis. We make no warranties, expressed or implied, regarding:',
     ],
     bullets: [
       'The accuracy, completeness, or timeliness of community-submitted safety data.',
@@ -208,7 +208,7 @@ export default function TermsOfService() {
         </button>
         <div className="tos-header__center">
           <h1 className="tos-header__title">Terms of Service</h1>
-          <p className="tos-header__sub">AfterHours · Olongapo City</p>
+          <p className="tos-header__sub">AfterHours</p>
         </div>
         {/* spacer to balance the back button */}
         <div className="tos-back-btn" style={{ visibility: 'hidden' }} aria-hidden="true" />
@@ -220,8 +220,8 @@ export default function TermsOfService() {
         {/* intro banner */}
         <div className="tos-intro">
           <p>
-            Please read these terms carefully before using the AfterHours
-            application. They define your rights and responsibilities as a
+            Please read these terms carefully before using AfterHours.
+            They define your rights and responsibilities as a
             member of this safety community.
           </p>
         </div>
@@ -276,7 +276,7 @@ export default function TermsOfService() {
           <div className="tos-footer__notice">
             <IconShield />
             <p>
-              AfterHours is a student capstone project built for community safety.
+              AfterHours is a student project built for community safety.
               It is not a substitute for professional emergency services.
             </p>
           </div>

@@ -1,7 +1,15 @@
+/**
+ * useLocation.js
+ *
+ * Watches the user's GPS position via the Geolocation API.
+ * Respects the `locationEnabled` setting — when false, GPS watching
+ * stops entirely and coords is set to null.
+ */
+
 import { useState, useEffect, useCallback } from 'react';
 
-export function useLocation() {
-  const [coords,  setCoords]  = useState(null);  // { lat, lng }
+export function useLocation(locationEnabled = true) {
+  const [coords,  setCoords]  = useState(null);
   const [error,   setError]   = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -20,14 +28,28 @@ export function useLocation() {
   }, []);
 
   useEffect(() => {
+    // 1. If location is disabled in settings, stop immediately
+    if (!locationEnabled) {
+      // FIX: Use a timeout to move these state updates to the next tick
+      const t = setTimeout(() => {
+        setCoords(null);
+        setError(null);
+        setLoading(false);
+      }, 0);
+      return () => clearTimeout(t);
+    }
+
+    // 2. Check browser support
     if (!navigator.geolocation) {
-      // Wrap in setTimeout so setState is never called synchronously
       const t = setTimeout(() => {
         setError('Geolocation is not supported by your browser.');
         setLoading(false);
       }, 0);
       return () => clearTimeout(t);
     }
+
+    // FIX: Also wrap this in a timeout to avoid cascading renders on the start-up
+    const tLoading = setTimeout(() => setLoading(true), 0);
 
     const watchId = navigator.geolocation.watchPosition(
       onSuccess,
@@ -39,8 +61,11 @@ export function useLocation() {
       }
     );
 
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, [onSuccess, onError]);
+    return () => {
+      clearTimeout(tLoading);
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, [locationEnabled, onSuccess, onError]);
 
   return { coords, error, loading };
 }

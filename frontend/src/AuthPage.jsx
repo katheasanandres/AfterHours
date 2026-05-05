@@ -124,6 +124,7 @@ function InputField({ id, label, type, value, onChange, onBlur,
       )}
     </div>
   );
+  
 }
 
 /* MAIN COMPONENTS */

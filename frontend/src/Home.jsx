@@ -6,12 +6,14 @@ import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet.heat';
 import 'leaflet/dist/leaflet.css';
-import { useLocation } from './hooks/useLocation';
+import { useLocation } from './hooks/UseLocation';
+import { useSettings } from './hooks/UseSettings';
 import ReportModal from './ReportModal';
 import './Home.css';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MAP SUB-COMPONENTS
+   These live outside Home() so they don't re-mount on every render.
 ═══════════════════════════════════════════════════════════════════════════ */
 
 /** Renders the risk heatmap layer inside the Leaflet map context */
@@ -60,6 +62,10 @@ function UserDot({ position }) {
   return null;
 }
 
+/**
+ * Exposes the Leaflet map instance to the parent via a ref.
+ * Parent calls mapRef.current.flyTo([lat, lng]) to re-center.
+ */
 function MapController({ mapRef }) {
   const map = useMap();
   useEffect(() => { mapRef.current = map; }, [map, mapRef]);
@@ -109,21 +115,24 @@ const NavIconSettings = ({ active }) => (
 );
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MAIN COMPONENTS
+   MAIN COMPONENT
 ═══════════════════════════════════════════════════════════════════════════ */
 export default function Home() {
   const navigate = useNavigate();
 
-  const [activeNav,    setActiveNav]    = useState('map');
-  const [alertVisible, setAlertVisible] = useState(true);
-  const [currentTime,  setCurrentTime]  = useState('');
-  const [reportOpen,   setReportOpen]   = useState(false);
+  const [activeNav,   setActiveNav]   = useState('map');
+  const [currentTime, setCurrentTime] = useState('');
+  const [reportOpen,  setReportOpen]  = useState(false);
 
   // Ref to the Leaflet map instance — used by the re-center button
   const mapRef = useRef(null);
 
-  // ── Real GPS coords from the custom hook ──────────────────────────────
-  const { coords, error: locationError, loading: locationLoading } = useLocation();
+  // ── Settings from Firestore ───────────────────────────────────────────
+  const { settings } = useSettings();
+
+  // ── Real GPS coords — respects locationEnabled setting ───────────────
+  const { coords, error: locationError, loading: locationLoading } =
+    useLocation(settings.locationEnabled);
 
   const mapCenter = coords
     ? [coords.lat, coords.lng]
@@ -131,7 +140,8 @@ export default function Home() {
 
   // ── Real-time heatmap data from Firestore ─────────────────────────────
   const [heatPoints, setHeatPoints] = useState([]);
-  const [allReports, setAllReports] = useState([]); // raw docs for vibe calc
+  const [allReports, setAllReports] = useState([]);
+  const [alertVisible, setAlertVisible] = useState(true);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'reports'), (snapshot) => {
