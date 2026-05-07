@@ -83,6 +83,21 @@
 }
 .tos-scroll::-webkit-scrollbar { display: none; }
 
+/* ─── GATE BANNER ────────────────────────────────────────────────────────── */
+/* Only shown when a freshly-logged-in user hasn't accepted ToS yet */
+.tos-gate-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(249,115,22,0.10);
+  border: 1px solid rgba(249,115,22,0.35);
+  border-radius: var(--r-lg);
+  padding: 13px 14px;
+  margin-bottom: 14px;
+}
+.tos-gate-banner svg { color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.tos-gate-banner p   { font-size: 13px; color: var(--txt2); line-height: 1.55; }
+
 /* ─── INTRO BANNER ──────────────────────────────────────────────────────── */
 .tos-intro {
   background: var(--accent-dim);
