@@ -441,7 +441,6 @@ function ReportDetailSheet({ report, onClose }) {
 /* ═══════════════════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════════════════════ */
-// ... (keep all your imports and Icon/Constant/Helper components the same)
 
 export default function Reports() {
   const navigate = useNavigate();
@@ -472,8 +471,6 @@ export default function Reports() {
     const unsub = onSnapshot(q,
       (snapshot) => {
         setReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        // ESLINT FIX: Use a tiny timeout to ensure the state update 
-        // happens AFTER the initial render cycle completes.
         setTimeout(() => setLoading(false), 0);
       },
       (err) => {
@@ -485,8 +482,6 @@ export default function Reports() {
 
     return () => unsub();
   }, [navigate]);
-
-  // ... (keep the rest of your filtering, stats, and return JSX exactly as it was)
 
   // ── Client-side filtering ──────────────────────────────────────────────
   const filtered = useMemo(() => reports.filter(r => {

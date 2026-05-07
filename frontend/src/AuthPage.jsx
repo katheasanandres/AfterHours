@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "./firebase";
 import {
@@ -6,7 +6,8 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect, 
+  getRedirectResult
 } from "firebase/auth";
 import "./AuthPage.css";
 
@@ -146,8 +147,29 @@ export default function AuthPage() {
   const [touched, setTouched] = useState({});
   const [errors,  setErrors]  = useState({});
 
+  const onAuthSuccess = useCallback(async (credential) => {
+    const idToken = await credential.user.getIdToken();
+    sessionStorage.setItem("ah_token", idToken);
+    setSuccess(true);
+    setTimeout(() => navigate("/home"), 1200);
+  }, [navigate]);
+
   /* entrance animation */
   useEffect(() => { setTimeout(() => setMounted(true), 50); }, []);
+
+  /* Listen for redirect result on mount */
+  useEffect(() => {
+    const checkRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) await onAuthSuccess(result);
+      } catch (err) {
+        console.error("Redirect Error:", err);
+        setApiError("Failed to complete Google Sign-In.");
+      }
+    };
+    checkRedirect();
+  }, [onAuthSuccess]);
 
   /* ₊˚ ✧ ━━━━⊱helpers⊰━━━━ ✧ ₊˚ */
   function switchMode(m) {
@@ -209,14 +231,6 @@ export default function AuthPage() {
     return Object.values(errs).every(v => !v);
   }
 
-  /* ₊˚ ✧ ━━━━⊱Shared post-auth handler⊰━━━━ ✧ ₊˚ */
-  async function onAuthSuccess(credential) {
-    const idToken = await credential.user.getIdToken();
-    sessionStorage.setItem("ah_token", idToken);
-    setSuccess(true);
-    setTimeout(() => navigate("/home"), 1200);
-  }
-
   /* ₊˚ ✧ ━━━━⊱Email / Password submit⊰━━━━ ✧ ₊˚ */
   async function handleSubmit(e) {
     e.preventDefault();
@@ -273,32 +287,14 @@ export default function AuthPage() {
 
     try {
       const provider = new GoogleAuthProvider();
-      // Force account picker
       provider.setCustomParameters({ prompt: "select_account" });
 
-      const credential = await signInWithPopup(auth, provider);
-      await onAuthSuccess(credential);
-
+      await signInWithRedirect(auth, provider);
+      
     } catch (err) {
-      if (
-        err.code === "auth/popup-closed-by-user" ||
-        err.code === "auth/cancelled-popup-request"
-      ) {
-        setGoogleLoad(false);
-        return;
-      }
-      const messages = {
-        "auth/popup-blocked":
-          "Popup was blocked. Please allow popups for this site and try again.",
-        "auth/account-exists-with-different-credential":
-          "An account already exists with this email. Try signing in with email & password.",
-        "auth/network-request-failed":
-          "Network error. Please check your connection.",
-      };
-      setApiError(messages[err.code] || "Google sign-in failed. Please try again.");
-    } finally {
-      setGoogleLoad(false);
-    }
+  console.error("Auth error:", err);
+  setApiError("Something went wrong.");
+}
   }
 
   const strength    = getStrength(form.password);
