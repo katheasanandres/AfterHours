@@ -10,14 +10,14 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
-from nlp import analyze_report
+from backend.api.nlp import analyze_report
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # ── App setup ──────────────────────────────────────────────────────────────
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5173"])  # Vite dev server
+CORS(app, origins=["http://localhost:5173", "https://AfterHours.app"])
 
 # ── Firebase Admin SDK ─────────────────────────────────────────────────────
 cred = credentials.Certificate("service_account.json")
@@ -41,10 +41,7 @@ def verify_token(request):
 
 # ── Email helper ───────────────────────────────────────────────────────────
 def send_email(to_address, subject, html_body):
-    """
-    Sends an email via Gmail SMTP using credentials from .env.
-    MAIL_SENDER and MAIL_APP_PASSWORD must be set.
-    """
+    
     sender   = os.getenv("MAIL_SENDER")
     app_pass = os.getenv("MAIL_APP_PASSWORD")
 
