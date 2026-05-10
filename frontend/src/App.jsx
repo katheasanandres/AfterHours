@@ -14,7 +14,8 @@ const TOS_KEY   = "ah_tos_accepted";
 /*
   Three possible states:
     1. No token              → not logged in          → /login
-    2. Token + ToS accepted  → fully authorised       → render children
+    2. Token + ToS accepted  → fully authorised       → render children]
+    ''''''''''''''''''''''''''''''''
     3. Token + no ToS        → logged in but not accepted yet → /terms
 */
 function PrivateRoute({ children }) {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './TermsOfService.css';
 
-/* ─── Keys ─── */
+/* ─── Keys — must match App.jsx exactly ─────────────────────────────────── */
 const TOKEN_KEY = "ah_token";
 const TOS_KEY   = "ah_tos_accepted";
 

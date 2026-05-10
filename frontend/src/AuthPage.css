@@ -236,51 +236,6 @@ body {
   letter-spacing: 0.01em;
 }
 
-.auth-tabs {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  padding: 4px;
-  margin-bottom: 24px;
-  overflow: hidden;
-}
-
-.auth-tab {
-  position: relative;
-  z-index: 1;
-  background: none;
-  border: none;
-  padding: 9px 0;
-  font-family: 'Syne', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--txt3);
-  cursor: pointer;
-  border-radius: var(--r-sm);
-  transition: color 0.3s var(--ease);
-  letter-spacing: 0.01em;
-}
-.auth-tab--active {
-  color: var(--txt);
-}
-
-/* sliding pill indicator */
-.auth-tab-indicator {
-  position: absolute;
-  top: 4px; left: 4px;
-  width: calc(50% - 4px);
-  bottom: 4px;
-  background: var(--surface2);
-  border: 1px solid var(--border2);
-  border-radius: calc(var(--r-md) - 4px);
-  transition: transform 0.35s var(--ease);
-  pointer-events: none;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-}
-
 /* ₊˚ ✧ ━━━━⊱FORM⊰━━━━ ✧ ₊˚ */
 .auth-form {
   display: flex;
