@@ -1,3 +1,18 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   AfterHours — Home.css
+   Shares the same CSS custom properties defined in AuthPage.css / index.css.
+   Import order in main.jsx: index.css → AuthPage.css (sets :root vars) → Home.css
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── PAGE LAYOUT ───────────────────────────────────────────────────────── */
+/*
+  Full-screen mobile layout:
+  ┌──────────────┐  ← header        (fixed height)
+  │   MAP AREA   │  ← flex: 1       (fills remaining space)
+  ├──────────────┤  ← bottom sheet  (fixed height)
+  └──────────────┘  ← bottom nav    (fixed, sits over content)
+*/
+
 .home-root {
   display: flex;
   flex-direction: column;
@@ -14,17 +29,17 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 48px 18px 14px;   
+  padding: 48px 18px 14px;   /* top padding accounts for mobile status bar */
   background: linear-gradient(to bottom, var(--bg) 60%, transparent);
-  position: absolute;        
+  position: absolute;        /* float over the map */
   top: 0;
   left: 0;
   right: 0;
   z-index: 400;
-  pointer-events: none;  
+  pointer-events: none;      /* let map touches pass through the transparent area */
 }
 
-/* re-enable pointer events for header children (logo, GPS status, logout) */
+/* re-enable pointer events only on interactive children */
 .home-header > * {
   pointer-events: auto;
 }
@@ -126,10 +141,10 @@
   z-index: 1;
 }
 
-/* ── Alert banner ─────────────────────────────── */
+/* ── Alert banner (floats over map) ─────────────────────────────── */
 .alert-banner {
   position: absolute;
-  top: 88px;          
+  top: 88px;          /* clears the floating header */
   left: 12px;
   right: 12px;
   z-index: 500;
@@ -143,11 +158,35 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   animation: bannerSlide 0.35s var(--ease);
+  /* icon and text colour — overridden per urgency below */
+  color: #ff6b4a;
 }
 @keyframes bannerSlide {
   from { opacity: 0; transform: translateY(-8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* High urgency — red (default, already set above) */
+.alert-banner--high {
+  background: rgba(224,62,45,0.13);
+  border-color: rgba(224,62,45,0.4);
+  color: #ff6b4a;
+}
+.alert-banner--high .alert-banner__icon {
+  background: rgba(224,62,45,0.2);
+}
+.alert-banner--high .alert-banner__body strong { color: #ff6b4a; }
+
+/* Moderate urgency — amber */
+.alert-banner--moderate {
+  background: rgba(245,158,11,0.12);
+  border-color: rgba(245,158,11,0.4);
+  color: var(--amber);
+}
+.alert-banner--moderate .alert-banner__icon {
+  background: rgba(245,158,11,0.18);
+}
+.alert-banner--moderate .alert-banner__body strong { color: var(--amber); }
 
 .alert-banner__icon {
   width: 28px;
@@ -158,16 +197,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  color: inherit;
 }
 
-.alert-banner__body {
-  flex: 1;
-}
+.alert-banner__body { flex: 1; }
 .alert-banner__body strong {
   display: block;
   font-size: 12px;
   font-weight: 600;
-  color: #ff6b4a;
+  color: inherit;
   font-family: 'Syne', sans-serif;
 }
 .alert-banner__body p {
@@ -189,7 +227,7 @@
 }
 .alert-banner__close:hover { color: var(--txt); }
 
-/* ── Risk legend ──────────────────────────── */
+/* ── Risk legend (bottom-right of map) ──────────────────────────── */
 .map-legend {
   position: absolute;
   bottom: 16px;
@@ -224,7 +262,7 @@
 .map-legend__dot--mid  { background: var(--amber); }
 .map-legend__dot--safe { background: var(--green); }
 
-/* ── User location dot ────────────── */
+/* ── User location dot (rendered via Leaflet divIcon) ────────────── */
 .user-dot {
   width: 14px;
   height: 14px;
@@ -434,6 +472,7 @@
 }
 
 /* ─── LEAFLET OVERRIDES ─────────────────────────────────────────────────── */
+/* Push Leaflet attribution to not overlap with the bottom sheet */
 .leaflet-bottom.leaflet-right {
   bottom: 4px;
   right: 4px;
@@ -448,6 +487,7 @@
 
 /* ─── RESPONSIVE ────────────────────────────────────────────────────────── */
 @media (min-width: 480px) {
+  /* On larger screens, cap width and center like a mobile app */
   .home-root {
     max-width: 430px;
     margin: 0 auto;

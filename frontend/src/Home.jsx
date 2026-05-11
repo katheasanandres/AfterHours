@@ -6,8 +6,8 @@ import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet.heat';
 import 'leaflet/dist/leaflet.css';
-import { useLocation } from './hooks/UseLocation';
-import { useSettings } from './hooks/UseSettings';
+import { useLocation } from './hooks/useLocation';
+import { useSettings } from './hooks/useSettings';
 import ReportModal from './ReportModal';
 import './Home.css';
 
@@ -140,8 +140,69 @@ export default function Home() {
 
   // ── Real-time heatmap data from Firestore ─────────────────────────────
   const [heatPoints, setHeatPoints] = useState([]);
-  const [allReports, setAllReports] = useState([]);
-  const [alertVisible, setAlertVisible] = useState(true);
+  const [allReports, setAllReports] = useState([]); // raw docs for vibe calc
+
+  // ── Proximity alert — driven by real Firestore data + live GPS ────────
+  // Resets when user moves to a new area (alertDismissed clears on coord change)
+  const [alertDismissed, setAlertDismissed] = useState(false);
+
+  // Reset dismissal when user moves significantly (so alert can refire)
+  const prevCoordsRef = useRef(null);
+  useEffect(() => {
+    if (!coords) return;
+    const prev = prevCoordsRef.current;
+    if (prev) {
+      const moved = Math.abs(coords.lat - prev.lat) + Math.abs(coords.lng - prev.lng);
+      if (moved > 0.002) setAlertDismissed(false); // ~200m movement resets
+    }
+    prevCoordsRef.current = coords;
+  }, [coords]);
+
+  const proximityAlert = useCallback(() => {
+    if (!settings.proximityAlerts) return null;
+    if (!coords)           return null;
+    if (alertDismissed)    return null;
+    if (!allReports.length) return null;
+
+    // Convert alertRadius (metres) → degrees (1° ≈ 111,000 m)
+    const radiusDeg = (settings.alertRadius ?? 250) / 111000;
+
+    const nearby = allReports.filter(r => {
+      if (!r.location?.lat || !r.location?.lng) return false;
+      const urgency = r.effective_urgency ?? r.urgency ?? 'low';
+      if (urgency === 'low') return false; // only surface high / moderate
+      return (
+        Math.abs(r.location.lat - coords.lat) < radiusDeg &&
+        Math.abs(r.location.lng - coords.lng) < radiusDeg
+      );
+    });
+
+    if (!nearby.length) return null;
+
+    // Sort so the most severe report drives the banner text
+    const order  = { high: 0, moderate: 1 };
+    const sorted = [...nearby].sort((a, b) =>
+      (order[a.effective_urgency ?? a.urgency] ?? 1) -
+      (order[b.effective_urgency ?? b.urgency] ?? 1)
+    );
+    const top     = sorted[0];
+    const urgency = top.effective_urgency ?? top.urgency;
+
+    const CAT_READABLE = {
+      poor_lighting:         'Poor lighting',
+      loitering:             'Suspicious loitering',
+      catcalling:            'Harassment reported',
+      broken_infrastructure: 'Broken infrastructure',
+      unsafe_vehicle:        'Unsafe vehicle',
+      no_bystanders:         'Isolated area',
+      other:                 'Safety concern',
+    };
+    const catLabel = CAT_READABLE[top.ai_category ?? top.category] ?? 'Safety concern';
+
+    return { urgency, catLabel, count: nearby.length };
+  }, [allReports, coords, settings.proximityAlerts, settings.alertRadius, alertDismissed]);
+
+  const proximityAlertData = proximityAlert();
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'reports'), (snapshot) => {
@@ -318,25 +379,38 @@ export default function Home() {
           <MapController mapRef={mapRef} />
         </MapContainer>
 
-        {/* Floating alert banner */}
-        {alertVisible && (
-          <div className="alert-banner" role="alert">
+        {/* Dynamic proximity alert banner — only shows when a real
+            high/moderate report is within the user's alert radius     */}
+        {proximityAlertData && (
+          <div
+            className={`alert-banner alert-banner--${proximityAlertData.urgency}`}
+            role="alert"
+          >
             <div className="alert-banner__icon" aria-hidden="true">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M7 1.5L12.5 11H1.5L7 1.5Z"
-                  stroke="#ff6b4a" strokeWidth="1.2" strokeLinejoin="round"/>
+                  stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
                 <line x1="7" y1="6" x2="7" y2="9"
-                  stroke="#ff6b4a" strokeWidth="1.2" strokeLinecap="round"/>
-                <circle cx="7" cy="10.5" r="0.6" fill="#ff6b4a"/>
+                  stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                <circle cx="7" cy="10.5" r="0.6" fill="currentColor"/>
               </svg>
             </div>
             <div className="alert-banner__body">
-              <strong>High-risk zone ahead</strong>
-              <p>Poor lighting · 5 reports in last 2 hrs</p>
+              <strong>
+                {proximityAlertData.urgency === 'high'
+                  ? '⚠️ High-risk zone nearby'
+                  : 'Caution — risk zone nearby'}
+              </strong>
+              <p>
+                {proximityAlertData.catLabel}
+                {proximityAlertData.count > 1
+                  ? ` · ${proximityAlertData.count} reports`
+                  : ''}
+              </p>
             </div>
             <button
               className="alert-banner__close"
-              onClick={() => setAlertVisible(false)}
+              onClick={() => setAlertDismissed(true)}
               aria-label="Dismiss alert"
             >
               ×
