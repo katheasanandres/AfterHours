@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from './firebase';
-import { useSettings } from './hooks/useSettings';
+import { useSettings } from './hooks/UseSettings';
 import './Settings.css';
 
 /* ═══════════════════════════════════════════════════════════════════════════

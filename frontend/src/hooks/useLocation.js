@@ -1,11 +1,3 @@
-/**
- * useLocation.js
- *
- * Watches the user's GPS position via the Geolocation API.
- * Respects the `locationEnabled` setting — when false, GPS watching
- * stops entirely and coords is set to null.
- */
-
 import { useState, useEffect, useCallback } from 'react';
 
 export function useLocation(locationEnabled = true) {
