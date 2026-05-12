@@ -35,6 +35,8 @@ function PrivateRoute({ children }) {
     return () => unsubscribe();
   }, []);
 
+console.log("Current Path Auth Check:", { isAuthenticated, loading, token: localStorage.getItem("ah_token") });
+
   // Prevents the app from kicking you to login while Firebase is still checking the session
   if (loading) {
     return (
