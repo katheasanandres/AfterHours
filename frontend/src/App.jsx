@@ -1,4 +1,7 @@
+import { useState, useEffect } from "react"; // Added hooks
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { onAuthStateChanged } from "firebase/auth"; // Added for auth check
+import { auth } from "./firebase"; // Adjust path if necessary
 import AuthPage      from "./AuthPage";
 import TermsOfService from "./TermsOfService";
 import Home          from "./Home";
@@ -11,19 +14,38 @@ const TOKEN_KEY = "ah_token";
 const TOS_KEY   = "ah_tos_accepted";
 
 /* ─── PrivateRoute ───────────────────────────────────────────────────────── */
-/*
-  Three possible states:
-    1. No token              → not logged in          → /login
-    2. Token + ToS accepted  → fully authorised       → render children]
-    ''''''''''''''''''''''''''''''''
-    3. Token + no ToS        → logged in but not accepted yet → /terms
-*/
 function PrivateRoute({ children }) {
-  const token       = sessionStorage.getItem(TOKEN_KEY);
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const tosAccepted = localStorage.getItem(TOS_KEY) === "true";
 
-  if (!token)       return <Navigate to="/login"  replace />;
-  if (!tosAccepted) return <Navigate to="/terms"  replace />;
+  useEffect(() => {
+    // Check both the Firebase Auth state and your manual token key
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      const token = sessionStorage.getItem(TOKEN_KEY);
+      if (user || token) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // While checking auth, show nothing or a splash screen to prevent flicker
+  if (loading) {
+    return (
+      <div style={{ background: "#0f172a", height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", color: "white" }}>
+        <p>Loading AfterHours...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!tosAccepted)    return <Navigate to="/terms" replace />;
+  
   return children;
 }
 
