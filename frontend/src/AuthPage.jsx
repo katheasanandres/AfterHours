@@ -493,7 +493,7 @@ function ForgotPasswordSheet({ onClose }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   MAIN AUTH COMPONENT — unchanged except for showForgot state + sheet mount
+   MAIN AUTH COMPONENT
 ═══════════════════════════════════════════════════════════════════════════ */
 export default function AuthPage() {
   const navigate = useNavigate();

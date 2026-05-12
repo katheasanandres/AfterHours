@@ -180,7 +180,7 @@ export default function TermsOfService() {
   // True when:  user has a token BUT hasn't accepted ToS yet
   // False when: user opened /terms from the Settings page (already accepted)
   const isGated =
-    !!sessionStorage.getItem(TOKEN_KEY) &&
+    !!localStorage.getItem(TOKEN_KEY) &&
     localStorage.getItem(TOS_KEY) !== "true";
 
   // ── Accept ──────────────────────────────────────────────────────────────
@@ -193,9 +193,11 @@ export default function TermsOfService() {
   // Clears the auth token so the user is effectively logged out,
   // then sends them back to /login.
   function handleDecline() {
-    sessionStorage.removeItem(TOKEN_KEY);
-    navigate('/login', { replace: true });
+  localStorage.removeItem(TOKEN_KEY);
+  navigate('/login', { replace: true });
   }
+
+  
 
   // ── Back button ──────────────────────────────────────────────────────────
   // If gated: back = decline (no way to sneak past without accepting)
