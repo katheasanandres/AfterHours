@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './TermsOfService.css';
 
-/* ─── Keys — must match App.jsx exactly ─────────────────────────────────── */
 const TOKEN_KEY = "ah_token";
 const TOS_KEY   = "ah_tos_accepted";
 
@@ -116,7 +115,6 @@ const SECTIONS = [
     body: ['We take your privacy seriously. AfterHours is built with a privacy-first architecture.'],
     bullets: [
       'Location data is used exclusively for real-time safety updates and heatmap generation, and is not retained after processing.',
-      'Raw report text is discarded after AI sentiment analysis. Only the processed category label and risk score are stored.',
       'Your anonymous session ID is rotated regularly if session rotation is enabled in Settings.',
       'No personal identity data is sold, rented, or shared with third parties under any circumstances.',
       'Data is stored using Firebase / Firestore with security rules that prevent unauthorized access.',
