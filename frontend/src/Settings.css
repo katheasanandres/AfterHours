@@ -1,3 +1,7 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   AfterHours — Settings.css
+═══════════════════════════════════════════════════════════════════════════ */
+
 .settings-root {
   display: flex;
   flex-direction: column;
@@ -150,6 +154,10 @@
 }
 .toggle--on  { background: var(--accent); }
 .toggle--off { background: var(--surface3); }
+.toggle--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 .toggle__thumb {
   position: absolute;
@@ -259,6 +267,22 @@
   justify-content: space-between;
   font-size: 10px;
   color: var(--txt3);
+}
+
+/* Greyed out when proximity alerts are off */
+.slider-wrap--disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Note shown below slider when it's disabled */
+.setting-row__disabled-note {
+  font-size: 11px;
+  color: var(--txt3);
+  font-style: italic;
+  text-align: center;
+  padding: 0 4px;
+  line-height: 1.5;
 }
 
 /* ─── SUPPORT ROWS ──────────────────────────────────────────────────────── */
