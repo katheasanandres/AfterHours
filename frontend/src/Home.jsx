@@ -6,7 +6,7 @@ import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet.heat';
 import 'leaflet/dist/leaflet.css';
-import { useLocation } from './hooks/UseLocation.js';
+import { useLocation } from './hooks/UseLocation';
 import { useSettings } from './hooks/UseSettings';
 import ReportModal from './ReportModal';
 import './Home.css';
