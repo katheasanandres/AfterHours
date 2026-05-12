@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from './firebase';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { useLocation } from './hooks/useLocation';
+import { useLocation } from './hooks/UseLocation';
 import './Reports.css';
 
 /* ═══════════════════════════════════════════════════════════════════════════
