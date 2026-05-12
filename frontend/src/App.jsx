@@ -12,6 +12,8 @@ import Reports       from "./Reports";
 /* ─── Keys ───────────────────────────────────────────────────────────────── */
 const TOKEN_KEY = "ah_token";
 const TOS_KEY   = "ah_tos_accepted";
+console.log("Token:", sessionStorage.getItem(TOKEN_KEY));
+console.log("ToS:", localStorage.getItem(TOS_KEY));
 
 /* ─── PrivateRoute ───────────────────────────────────────────────────────── */
 function PrivateRoute({ children }) {
@@ -69,6 +71,7 @@ export default function App() {
         <Route path="/settings" element={
           <PrivateRoute><Settings /></PrivateRoute>
         } />
+        
         <Route path="/reports" element={
           <PrivateRoute><Reports /></PrivateRoute>
         } />
