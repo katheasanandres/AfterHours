@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react"; // Added hooks
+import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { onAuthStateChanged } from "firebase/auth"; // Added for auth check
-import { auth } from "./firebase"; // Adjust path if necessary
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "./firebase";
 import AuthPage      from "./AuthPage";
 import TermsOfService from "./TermsOfService";
 import Home          from "./Home";
@@ -12,8 +12,6 @@ import Reports       from "./Reports";
 /* ─── Keys ───────────────────────────────────────────────────────────────── */
 const TOKEN_KEY = "ah_token";
 const TOS_KEY   = "ah_tos_accepted";
-console.log("Token:", sessionStorage.getItem(TOKEN_KEY));
-console.log("ToS:", localStorage.getItem(TOS_KEY));
 
 /* ─── PrivateRoute ───────────────────────────────────────────────────────── */
 function PrivateRoute({ children }) {
@@ -22,9 +20,10 @@ function PrivateRoute({ children }) {
   const tosAccepted = localStorage.getItem(TOS_KEY) === "true";
 
   useEffect(() => {
-    // Check both the Firebase Auth state and your manual token key
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      const token = sessionStorage.getItem(TOKEN_KEY);
+      // Switched to localStorage to prevent the "null" error you saw in console
+      const token = localStorage.getItem(TOKEN_KEY);
+      
       if (user || token) {
         setIsAuthenticated(true);
       } else {
@@ -36,7 +35,7 @@ function PrivateRoute({ children }) {
     return () => unsubscribe();
   }, []);
 
-  // While checking auth, show nothing or a splash screen to prevent flicker
+  // Prevents the app from kicking you to login while Firebase is still checking the session
   if (loading) {
     return (
       <div style={{ background: "#0f172a", height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", color: "white" }}>
@@ -71,7 +70,6 @@ export default function App() {
         <Route path="/settings" element={
           <PrivateRoute><Settings /></PrivateRoute>
         } />
-        
         <Route path="/reports" element={
           <PrivateRoute><Reports /></PrivateRoute>
         } />

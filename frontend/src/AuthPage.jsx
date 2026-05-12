@@ -577,7 +577,7 @@ export default function AuthPage() {
 
   async function onAuthSuccess(credential) {
     const idToken = await credential.user.getIdToken();
-    sessionStorage.setItem("ah_token", idToken);
+    localStorage.setItem("ah_token", idToken); // For persistence across tabs
     setSuccess(true);
     setTimeout(() => navigate("/home"), 1200);
   }
