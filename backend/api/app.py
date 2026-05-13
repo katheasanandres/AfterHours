@@ -10,7 +10,7 @@ from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
-from backend.api.nlp import analyze_report
+from nlp import analyze_report
 from dotenv import load_dotenv
 
 load_dotenv()
