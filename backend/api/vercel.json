@@ -1,5 +1,23 @@
 {
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin-allow-popups"
+        }
+      ]
+    }
+  ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/app.py" }
+    { 
+      "source": "/api/(.*)", 
+      "destination": "/api/app.py" 
+    },
+    { 
+      "source": "/(.*)", 
+      "destination": "/" 
+    }
   ]
 }
