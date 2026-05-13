@@ -6,7 +6,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone, timedelta
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
@@ -62,43 +62,53 @@ def send_email(to_address, subject, html_body):
 # ══════════════════════════════════════════════════════════════════════════
 # POST /api/reports  — submit a new incident report
 # ══════════════════════════════════════════════════════════════════════════
-@app.route("/api/reports", methods=["POST"])
+# ══════════════════════════════════════════════════════════════════════════
+# POST /api/reports  — submit a new incident report
+# ══════════════════════════════════════════════════════════════════════════
+@app.route("/api/reports", methods=["POST", "OPTIONS"]) # 1. CRITICAL: Added OPTIONS here
 def submit_report():
+    # 2. Handle the Pre-flight request
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization") # Be specific
+        response.headers.add("Access-Control-Allow-Methods", "POST")
+        return response, 200
 
-    # 1. Verify if the user is authenticated
+    # 3. Verify if the user is authenticated
     try:
         token = verify_token(request)
     except Exception as e:
         return jsonify({"error": "Unauthorized", "detail": str(e)}), 401
 
-    # 2. Parse request body
+    # 4. Parse request body
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "Invalid JSON body."}), 400
 
-    # 3. Validate required fields
+    # 5. Validate required fields
     for field in ["category", "urgency"]:
         if not data.get(field):
             return jsonify({"error": f"Missing required field: {field}"}), 422
 
-    # 4. ── Run NLP analysis ──────────────────────────────────────────────
+    # 6. ── Run NLP analysis ──────────────────────────────────────────────
     nlp_result = analyze_report(
         description=data.get("description", ""),
         user_category=data["category"],
         user_urgency=data["urgency"],
     )
 
-    # 5. Build the Firestore document
+    # 7. Build the Firestore document
     report = {
-        "uid":         token["uid"],
-        "category":    data["category"],
-        "urgency":     data["urgency"],
-        "description": data.get("description", ""),
-        "location":    data.get("location"),
-        "timestamp":   firestore.SERVER_TIMESTAMP,
-        "status":      "pending",
+        "uid":                 token["uid"],
+        "category":            data["category"],
+        "urgency":             data["urgency"],
+        "description":         data.get("description", ""),
+        "location":            data.get("location"),
+        "timestamp":           firestore.SERVER_TIMESTAMP,
+        "status":              "pending",
         "ai_category":         nlp_result["ai_category"],
-        "ai_urgency":          nlp_result["ai_urgency"],
+        "ai_urgency":           nlp_result["ai_urgency"],
         "category_confidence": nlp_result["category_confidence"],
         "urgency_confidence":  nlp_result["urgency_confidence"],
         "category_mismatch":   nlp_result["category_mismatch"],
@@ -109,29 +119,6 @@ def submit_report():
 
     _, doc_ref = db.collection("reports").add(report)
     return jsonify({"success": True, "report_id": doc_ref.id}), 201
-
-
-# ══════════════════════════════════════════════════════════════════════════
-# GET /api/reports  — fetch all reports for heatmap rendering
-# ══════════════════════════════════════════════════════════════════════════
-@app.route("/api/reports", methods=["GET"])
-def get_reports():
-    reports_ref = db.collection("reports").stream()
-    reports = []
-    for doc in reports_ref:
-        d = doc.to_dict()
-        if d.get("location"):
-            reports.append({
-                "id":                doc.id,
-                "category":          d.get("category"),
-                "urgency":           d.get("urgency"),
-                "effective_urgency": d.get("effective_urgency", d.get("urgency")),
-                "ai_urgency":        d.get("ai_urgency"),
-                "location":          d.get("location"),
-                "status":            d.get("status", "pending"),
-            })
-    return jsonify(reports), 200
-
 
 # ══════════════════════════════════════════════════════════════════════════
 # POST /api/auth/send-otp
