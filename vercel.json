@@ -10,6 +10,11 @@
       ]
     }
   ],
+  "functions": {
+    "backend/api/app.py": {
+      "runtime": "vercel-python@0.0.6"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/:path*",
@@ -17,7 +22,7 @@
     },
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/frontend/index.html"
     }
   ]
 }

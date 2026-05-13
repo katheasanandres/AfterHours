@@ -114,7 +114,7 @@ function StepDetails({ urgency, onUrgency, description, onDescription, category 
           className="rm-desc-input"
           value={description}
           onChange={e => onDescription(e.target.value.slice(0, MAX))}
-          placeholder="Describe what you saw — be specific but don't share anyone's personal info…"
+          placeholder="Describe what you saw — be specific but don't share anyone's personal info"
           rows={3}
         />
         <p className={`rm-desc-counter ${remaining < 30 ? 'rm-desc-counter--warn' : ''}`}>
@@ -197,7 +197,7 @@ function StepSuccess() {
       </div>
       <h3 className="rm-success__title">Report submitted!</h3>
       <p className="rm-success__sub">
-        Thank you for keeping Olongapo safer. Your report has been added to
+        Thank you for keeping the community safer. Your report has been added to
         the community heatmap.
       </p>
     </div>
