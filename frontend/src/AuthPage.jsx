@@ -179,7 +179,7 @@ function ForgotPasswordSheet({ onClose }) {
     setErr("");
 
     try {
-      const res = await fetch("/api/auth/send-otp", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/send-otp`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ email: email.trim().toLowerCase() }),
@@ -233,7 +233,7 @@ function ForgotPasswordSheet({ onClose }) {
     setErr("");
 
     try {
-      const res = await fetch("/api/auth/verify-otp", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/verify-otp`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ email: email.trim().toLowerCase(), otp: code }),
@@ -259,7 +259,7 @@ function ForgotPasswordSheet({ onClose }) {
     setErr("");
 
     try {
-      const res = await fetch("/api/auth/reset-password", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/reset-password`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({

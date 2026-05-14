@@ -270,7 +270,7 @@ export default function ReportModal({ onClose, userCoords }) {
 
       // 3. POST to Flask — Vite proxy forwards /api → localhost:5000
       //    Flask runs NLP then writes to Firestore with all ai_* fields
-      const res = await fetch('/api/reports', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/reports`, {
         method:  'POST',
         headers: {
           'Content-Type':  'application/json',
