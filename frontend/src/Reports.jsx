@@ -1,8 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from './firebase';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import {
+  collection, query, where, orderBy,
+  onSnapshot, doc, updateDoc,
+} from 'firebase/firestore';
 import { useLocation } from './hooks/UseLocation';
+import { getReporterId } from './reporterId';
 import './Reports.css';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -10,10 +14,10 @@ import './Reports.css';
 ═══════════════════════════════════════════════════════════════════════════ */
 const IconBack = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-    <path d="M11 4L6 9L11 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M11 4L6 9L11 14" stroke="currentColor" strokeWidth="1.5"
+      strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
-
 const IconPin = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
     <path d="M5 1C3.3 1 2 2.3 2 4C2 6.3 5 9 5 9C5 9 8 6.3 8 4C8 2.3 6.7 1 5 1Z"
@@ -21,7 +25,6 @@ const IconPin = () => (
     <circle cx="5" cy="4" r="1.2" stroke="currentColor" strokeWidth="0.9"/>
   </svg>
 );
-
 const IconClock = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
     <circle cx="5" cy="5" r="3.8" stroke="currentColor" strokeWidth="0.9"/>
@@ -29,24 +32,27 @@ const IconClock = () => (
       strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
-
 const IconAI = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
     <circle cx="5" cy="5" r="3.8" stroke="currentColor" strokeWidth="0.9"/>
     <path d="M3 5H7M5 3V7" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round"/>
   </svg>
 );
-
 const IconClose = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
     <path d="M3 3L13 13M13 3L3 13" stroke="currentColor"
       strokeWidth="1.5" strokeLinecap="round"/>
   </svg>
 );
-
 const IconChevronRight = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
     <path d="M5 3L9 7L5 11" stroke="currentColor" strokeWidth="1.3"
+      strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+const IconCheck = () => (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
+    <path d="M3 7.5L6 10.5L12 4.5" stroke="currentColor" strokeWidth="1.5"
       strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
@@ -134,13 +140,8 @@ function fullDateTime(timestamp) {
   if (!timestamp) return 'Unknown';
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
   return date.toLocaleString('en-PH', {
-    weekday: 'long',
-    year:    'numeric',
-    month:   'long',
-    day:     'numeric',
-    hour:    'numeric',
-    minute:  '2-digit',
-    hour12:  true,
+    weekday: 'long', year: 'numeric', month: 'long',
+    day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true,
   });
 }
 
@@ -182,7 +183,7 @@ function FilterChip({ filter, active, onClick }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   REPORT CARD  (tappable — opens detail sheet)
+   REPORT CARD
 ═══════════════════════════════════════════════════════════════════════════ */
 function ReportCard({ report, onTap }) {
   const displayUrgency = report.effective_urgency ?? report.urgency ?? 'low';
@@ -244,10 +245,11 @@ function ReportCard({ report, onTap }) {
 
 /* ═══════════════════════════════════════════════════════════════════════════
    REPORT DETAIL SHEET
-   Slides up from the bottom when a card is tapped.
 ═══════════════════════════════════════════════════════════════════════════ */
-function ReportDetailSheet({ report, onClose }) {
-  const [visible, setVisible] = useState(false);
+function ReportDetailSheet({ report, onClose, onResolved }) {
+  const [visible,    setVisible]    = useState(false);
+  const [resolving,  setResolving]  = useState(false);
+  const [resolveErr, setResolveErr] = useState('');
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 20);
@@ -263,22 +265,40 @@ function ReportDetailSheet({ report, onClose }) {
     if (e.target === e.currentTarget) handleClose();
   }
 
+  // ── Mark as Resolved ──────────────────────────────────────────────────
+  // Only the reporter can do this — the query already filters by
+  // reporter_id so only their own reports appear in this list.
+  const handleResolve = useCallback(async () => {
+    setResolving(true);
+    setResolveErr('');
+    try {
+      await updateDoc(doc(db, 'reports', report.id), { status: 'resolved' });
+      // Notify parent so it can update selectedReport from fresh Firestore data
+      onResolved(report.id);
+      handleClose();
+    } catch (err) {
+      console.error('Failed to resolve report:', err);
+      setResolveErr('Could not update report. Please try again.');
+      setResolving(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report.id, onResolved]);
+
   if (!report) return null;
 
   const displayUrgency = report.effective_urgency ?? report.urgency ?? 'low';
   const urgencyColor   = { high: 'red', moderate: 'amber', low: 'gray' }[displayUrgency] ?? 'gray';
   const statusColor    = report.status === 'resolved' ? 'green' : 'amber';
-  const catLabel       = CAT_LABELS[report.category]     ?? report.category    ?? 'Unknown';
-  const catType        = CAT_TYPE[report.category]       ?? 'General';
-  const catEmoji       = CAT_EMOJI[report.category]      ?? '⚠️';
-  const aiCatLabel     = CAT_LABELS[report.ai_category]  ?? report.ai_category ?? null;
+  const catLabel       = CAT_LABELS[report.category]    ?? report.category    ?? 'Unknown';
+  const catType        = CAT_TYPE[report.category]      ?? 'General';
+  const catEmoji       = CAT_EMOJI[report.category]     ?? '⚠️';
+  const aiCatLabel     = CAT_LABELS[report.ai_category] ?? report.ai_category ?? null;
   const aiUrgLabel     = report.ai_urgency
     ? report.ai_urgency.charAt(0).toUpperCase() + report.ai_urgency.slice(1)
     : null;
-
-  const urgencyLabel = displayUrgency === 'high' ? 'High Severity'
-                     : displayUrgency === 'moderate' ? 'Moderate'
-                     : 'Low Severity';
+  const urgencyLabel   = displayUrgency === 'high' ? 'High Severity'
+                       : displayUrgency === 'moderate' ? 'Moderate' : 'Low Severity';
+  const isPending      = report.status !== 'resolved';
 
   return (
     <div
@@ -290,10 +310,8 @@ function ReportDetailSheet({ report, onClose }) {
     >
       <div className={`detail-sheet ${visible ? 'detail-sheet--in' : ''}`}>
 
-        {/* drag handle */}
         <div className="detail-handle" aria-hidden="true" />
 
-        {/* header */}
         <div className="detail-header">
           <div className="detail-header__emoji" aria-hidden="true">{catEmoji}</div>
           <div className="detail-header__text">
@@ -305,7 +323,6 @@ function ReportDetailSheet({ report, onClose }) {
           </button>
         </div>
 
-        {/* status + urgency badges */}
         <div className="detail-badges">
           <span className={`detail-badge detail-badge--${statusColor}`}>
             {report.status === 'resolved' ? '✓ Resolved' : '⏳ Pending'}
@@ -315,7 +332,6 @@ function ReportDetailSheet({ report, onClose }) {
           </span>
         </div>
 
-        {/* scrollable body */}
         <div className="detail-body">
 
           {/* When */}
@@ -349,23 +365,18 @@ function ReportDetailSheet({ report, onClose }) {
           )}
 
           {/* Description */}
-          {report.description ? (
-            <div className="detail-section">
-              <p className="detail-section__label">Your description</p>
-              <p className="detail-section__desc">"{report.description}"</p>
-            </div>
-          ) : (
-            <div className="detail-section">
-              <p className="detail-section__label">Your description</p>
-              <p className="detail-section__empty">No description provided</p>
-            </div>
-          )}
+          <div className="detail-section">
+            <p className="detail-section__label">Your description</p>
+            {report.description
+              ? <p className="detail-section__desc">"{report.description}"</p>
+              : <p className="detail-section__empty">No description provided</p>
+            }
+          </div>
 
           {/* NLP Analysis */}
           <div className="detail-section">
             <p className="detail-section__label">AI Analysis</p>
             <div className="detail-nlp-card">
-
               <div className="detail-nlp-row">
                 <span className="detail-nlp-key">Category detected</span>
                 <span className={`detail-nlp-val ${report.category_mismatch ? 'detail-nlp-val--mismatch' : 'detail-nlp-val--match'}`}>
@@ -375,7 +386,6 @@ function ReportDetailSheet({ report, onClose }) {
                   )}
                 </span>
               </div>
-
               <div className="detail-nlp-row">
                 <span className="detail-nlp-key">Urgency detected</span>
                 <span className={`detail-nlp-val ${report.urgency_mismatch ? 'detail-nlp-val--mismatch' : 'detail-nlp-val--match'}`}>
@@ -385,7 +395,6 @@ function ReportDetailSheet({ report, onClose }) {
                   )}
                 </span>
               </div>
-
               <div className="detail-nlp-row">
                 <span className="detail-nlp-key">Effective urgency</span>
                 <span className="detail-nlp-val">
@@ -395,7 +404,6 @@ function ReportDetailSheet({ report, onClose }) {
                   <span className="detail-nlp-note"> (used on heatmap)</span>
                 </span>
               </div>
-
               <div className="detail-nlp-row">
                 <span className="detail-nlp-key">Category confidence</span>
                 <span className="detail-nlp-val">
@@ -404,7 +412,6 @@ function ReportDetailSheet({ report, onClose }) {
                     : '—'}
                 </span>
               </div>
-
               <div className="detail-nlp-row">
                 <span className="detail-nlp-key">Urgency confidence</span>
                 <span className="detail-nlp-val">
@@ -413,7 +420,6 @@ function ReportDetailSheet({ report, onClose }) {
                     : '—'}
                 </span>
               </div>
-
               {report.low_confidence && (
                 <p className="detail-nlp-disclaimer">
                   ⚠️ No description was provided — AI ran on the category label only.
@@ -423,16 +429,40 @@ function ReportDetailSheet({ report, onClose }) {
             </div>
           </div>
 
-          
-
         </div>
 
-        {/* close button */}
+        {/* Footer */}
         <div className="detail-footer">
+          {resolveErr && (
+            <p className="detail-resolve-err" role="alert">⚠️ {resolveErr}</p>
+          )}
+
+          {/* Mark as Resolved — only visible on pending reports.
+              Since this page only shows the current user's own reports
+              (queried by reporter_id), only the reporter sees this button. */}
+          {isPending && (
+            <button
+              className={`detail-footer-btn detail-footer-btn--resolve
+                ${resolving ? 'detail-footer-btn--loading' : ''}`}
+              onClick={handleResolve}
+              disabled={resolving}
+            >
+              {resolving ? (
+                <>
+                  <span className="detail-spinner" aria-hidden="true" />
+                  <span>Marking resolved…</span>
+                </>
+              ) : (
+                <><IconCheck /><span>Mark as Resolved</span></>
+              )}
+            </button>
+          )}
+
           <button className="detail-footer-btn" onClick={handleClose}>
-            Close
+            {isPending ? 'Close' : 'Done'}
           </button>
         </div>
+
       </div>
     </div>
   );
@@ -441,37 +471,45 @@ function ReportDetailSheet({ report, onClose }) {
 /* ═══════════════════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════════════════════ */
-
 export default function Reports() {
   const navigate = useNavigate();
   const { coords } = useLocation();
 
-  const [reports,          setReports]        = useState([]);
-  const [loading,          setLoading]        = useState(true);
-  const [fetchErr,         setFetchErr]       = useState('');
-  const [selectedReport, setSelectedReport] = useState(null); 
+  const [reports,        setReports]        = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [fetchErr,       setFetchErr]       = useState('');
+  const [selectedReport, setSelectedReport] = useState(null);
 
   const [active, setActive] = useState({
     status: null, urgency: null, proximity: null, recency: null,
   });
 
-  // ── Real-time Firestore query ───────────────────────────
+  // ── Real-time Firestore query by reporter_id ────────────────────────────
+  // reporter_id is the anonymous localStorage ID — not the Firebase UID.
+  // This ensures only the reporter who submitted the report can see and
+  // resolve it, while keeping the system anonymous.
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) { navigate('/login'); return; }
 
-    const uid = user.uid; 
+    const reporterId = getReporterId();
+    if (!reporterId) {
+      setTimeout(() => setLoading(false), 0);
+      return;
+    }
 
     const q = query(
       collection(db, 'reports'),
-      where('uid', '==', uid),
+      where('reporter_id', '==', reporterId),
       orderBy('timestamp', 'desc'),
     );
 
-    const unsub = onSnapshot(q,
+    const unsub = onSnapshot(
+      q,
       (snapshot) => {
-        setReports(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        setTimeout(() => setLoading(false), 0);
+        const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        setReports(docs);
+        setLoading(false);
       },
       (err) => {
         console.error('Firestore error:', err);
@@ -483,9 +521,37 @@ export default function Reports() {
     return () => unsub();
   }, [navigate]);
 
+  // ── Keep selectedReport in sync with live Firestore data ───────────────
+  // ESLint fix: selectedReport.id is the only dependency we actually
+  // need — we look it up in the latest reports[] every time either changes.
+  // Using the full selectedReport object as a dep caused cascading renders.
+  const selectedReportId = selectedReport?.id ?? null;
+
+  useEffect(() => {
+    if (!selectedReportId) return;
+    const updated = reports.find(r => r.id === selectedReportId);
+    if (updated) {
+      setTimeout(() => {
+        setSelectedReport(prev =>
+          JSON.stringify(prev) !== JSON.stringify(updated) ? updated : prev
+        );
+      }, 0);
+    }
+  }, [reports, selectedReportId]);
+
+  // ── Called by ReportDetailSheet after a successful resolve ─────────────
+  // Closes the sheet — Firestore onSnapshot will push the status update
+  // automatically so the card re-renders to "Resolved" on its own.
+  const handleResolved = useCallback((resolvedId) => {
+    setSelectedReport(prev => {
+      if (prev?.id === resolvedId) return null;
+      return prev;
+    });
+  }, []);
+
   // ── Client-side filtering ──────────────────────────────────────────────
   const filtered = useMemo(() => reports.filter(r => {
-    if (active.status  && r.status !== active.status) return false;
+    if (active.status && r.status !== active.status) return false;
     if (active.urgency) {
       if ((r.effective_urgency ?? r.urgency) !== active.urgency) return false;
     }
@@ -502,7 +568,10 @@ export default function Reports() {
   }), [reports]);
 
   function toggleFilter(groupId, filterId) {
-    setActive(prev => ({ ...prev, [groupId]: prev[groupId] === filterId ? null : filterId }));
+    setActive(prev => ({
+      ...prev,
+      [groupId]: prev[groupId] === filterId ? null : filterId,
+    }));
   }
   function clearAll() {
     setActive({ status: null, urgency: null, proximity: null, recency: null });
@@ -517,10 +586,7 @@ export default function Reports() {
         <button className="back-btn" onClick={() => navigate('/home')} aria-label="Back to map">
           <IconBack />
         </button>
-        
         <h1 className="reports-header__title">Your Reports</h1>
-        
-        {/* Empty div to balance the flexbox so the title stays centered */}
         <div style={{ width: '36px' }} aria-hidden="true" />
       </header>
 
@@ -639,7 +705,7 @@ export default function Reports() {
       {/* Bottom nav */}
       <nav className="bottom-nav" aria-label="Main navigation">
         {[
-          { key: 'home', label: 'Map', icon: (a) => (
+          { key: 'home',     label: 'Map',      icon: (a) => (
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
               <rect x="2"  y="2"  width="7" height="7" rx="1.5" fill={a ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
               <rect x="13" y="2"  width="7" height="7" rx="1.5" fill={a ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
@@ -647,22 +713,26 @@ export default function Reports() {
               <rect x="13" y="13" width="7" height="7" rx="1.5" fill={a ? 'var(--accent)' : 'rgba(255,255,255,0.25)'}/>
             </svg>
           )},
-          { key: 'reports', label: 'Reports', icon: (a) => (
+          { key: 'reports',  label: 'Reports',  icon: (a) => (
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
               <path d="M11 2C7.5 2 5 4.5 5 7.5C5 12 11 20 11 20C11 20 17 12 17 7.5C17 4.5 14.5 2 11 2Z"
                 stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4" strokeLinejoin="round"/>
-              <circle cx="11" cy="7.5" r="2.2" stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4"/>
+              <circle cx="11" cy="7.5" r="2.2"
+                stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4"/>
             </svg>
           )},
-          { key: 'profile', label: 'Profile', icon: (a) => (
+          { key: 'profile',  label: 'Profile',  icon: (a) => (
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <circle cx="11" cy="8" r="4" stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4"/>
-              <path d="M4 20C4 16.7 7.1 14 11 14C14.9 14 18 16.7 18 20" stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4" strokeLinecap="round"/>
+              <circle cx="11" cy="8" r="4"
+                stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4"/>
+              <path d="M4 20C4 16.7 7.1 14 11 14C14.9 14 18 16.7 18 20"
+                stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4" strokeLinecap="round"/>
             </svg>
           )},
           { key: 'settings', label: 'Settings', icon: (a) => (
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <circle cx="11" cy="11" r="3" stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4"/>
+              <circle cx="11" cy="11" r="3"
+                stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4"/>
               <path d="M11 2V4.5M11 17.5V20M2 11H4.5M17.5 11H20M4.9 4.9L6.7 6.7M15.3 15.3L17.1 17.1M4.9 17.1L6.7 15.3M15.3 6.7L17.1 4.9"
                 stroke={a ? 'var(--accent)' : 'rgba(255,255,255,0.35)'} strokeWidth="1.4" strokeLinecap="round"/>
             </svg>
@@ -682,11 +752,12 @@ export default function Reports() {
         })}
       </nav>
 
-      {/* Detail sheet — mounts when a card is tapped */}
+      {/* Detail sheet */}
       {selectedReport && (
         <ReportDetailSheet
           report={selectedReport}
           onClose={() => setSelectedReport(null)}
+          onResolved={handleResolved}
         />
       )}
     </div>
