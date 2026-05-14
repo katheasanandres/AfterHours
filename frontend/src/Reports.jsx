@@ -477,48 +477,90 @@ export default function Reports() {
 
   const [reports,        setReports]        = useState([]);
   const [loading,        setLoading]        = useState(true);
-  const [fetchErr,       setFetchErr]       = useState('');
+  const [fetchErr]       = useState('');
   const [selectedReport, setSelectedReport] = useState(null);
 
   const [active, setActive] = useState({
     status: null, urgency: null, proximity: null, recency: null,
   });
 
-  // ── Real-time Firestore query by reporter_id ────────────────────────────
-  // reporter_id is the anonymous localStorage ID — not the Firebase UID.
-  // This ensures only the reporter who submitted the report can see and
-  // resolve it, while keeping the system anonymous.
+  // ── Real-time Firestore query ───────────────────────────────────────────
+  // Queries by reporter_id (new reports) AND uid (old reports submitted
+  // before the anonymous ID system was added). Merges and deduplicates.
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) { navigate('/login'); return; }
 
     const reporterId = getReporterId();
-    if (!reporterId) {
-      setTimeout(() => setLoading(false), 0);
-      return;
-    }
+    const uid        = user.uid;
 
-    const q = query(
+    // Query 1 — new reports stored with reporter_id
+    const q1 = query(
       collection(db, 'reports'),
       where('reporter_id', '==', reporterId),
       orderBy('timestamp', 'desc'),
     );
 
-    const unsub = onSnapshot(
-      q,
-      (snapshot) => {
-        const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        setReports(docs);
+    // Query 2 — old reports stored with uid only
+    const q2 = query(
+      collection(db, 'reports'),
+      where('uid', '==', uid),
+      orderBy('timestamp', 'desc'),
+    );
+
+    const seen    = new Set();
+    let   docs1   = [];
+    let   docs2   = [];
+    let   loaded1 = false;
+    let   loaded2 = false;
+
+    function merge() {
+      // Combine, deduplicate by id, sort newest first
+      const all = [...docs1, ...docs2].filter(d => {
+        if (seen.has(d.id)) return false;
+        seen.add(d.id);
+        return true;
+      });
+      seen.clear();
+      all.forEach(d => seen.add(d.id));
+      all.sort((a, b) => {
+        const ta = a.timestamp?.toDate?.() ?? new Date(a.timestamp ?? 0);
+        const tb = b.timestamp?.toDate?.() ?? new Date(b.timestamp ?? 0);
+        return tb - ta;
+      });
+      setTimeout(() => {
+        setReports(all);
         setLoading(false);
+      }, 0);
+    }
+
+    const unsub1 = onSnapshot(q1,
+      (snap) => {
+        docs1   = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        loaded1 = true;
+        if (loaded1 && loaded2) merge();
       },
       (err) => {
-        console.error('Firestore error:', err);
-        setFetchErr('Could not load reports. Please try again.');
-        setLoading(false);
+        console.error('Query 1 error:', err);
+        loaded1 = true;
+        if (loaded1 && loaded2) merge();
       }
     );
 
-    return () => unsub();
+    const unsub2 = onSnapshot(q2,
+      (snap) => {
+        docs2   = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        loaded2 = true;
+        if (loaded1 && loaded2) merge();
+      },
+      (err) => {
+        console.error('Query 2 error:', err);
+        loaded2 = true;
+        if (loaded1 && loaded2) merge();
+      }
+    );
+
+    return () => { unsub1(); unsub2(); };
   }, [navigate]);
 
   // ── Keep selectedReport in sync with live Firestore data ───────────────
