@@ -279,7 +279,7 @@
 }
 
 /* Hide the chevron SVG that Settings.jsx renders as the last child of support-row */
-.support-row svg:last-child { display: none; }
+.support-row > svg:last-child { display: none; }
 
 /* ─── LOGOUT ROW ────────────────────────────────────────────────────────── */
 .logout-row {

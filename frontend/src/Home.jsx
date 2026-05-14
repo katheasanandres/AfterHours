@@ -143,7 +143,6 @@ export default function Home() {
   const [allReports, setAllReports] = useState([]); // raw docs for vibe calc
 
   // ── Proximity alert — driven by real Firestore data + live GPS ────────
-  // Resets when user moves to a new area (alertDismissed clears on coord change)
   const [alertDismissed, setAlertDismissed] = useState(false);
 
   // Reset dismissal when user moves significantly (so alert can refire)
@@ -160,8 +159,8 @@ export default function Home() {
 
   const proximityAlert = useCallback(() => {
     if (!settings.proximityAlerts) return null;
-    if (!coords)           return null;
-    if (alertDismissed)    return null;
+    if (!coords)            return null;
+    if (alertDismissed)     return null;
     if (!allReports.length) return null;
 
     // Convert alertRadius (metres) → degrees (1° ≈ 111,000 m)
@@ -170,7 +169,7 @@ export default function Home() {
     const nearby = allReports.filter(r => {
       if (!r.location?.lat || !r.location?.lng) return false;
       const urgency = r.effective_urgency ?? r.urgency ?? 'low';
-      if (urgency === 'low') return false; // only surface high / moderate
+      if (urgency === 'low') return false;
       return (
         Math.abs(r.location.lat - coords.lat) < radiusDeg &&
         Math.abs(r.location.lng - coords.lng) < radiusDeg
@@ -179,7 +178,6 @@ export default function Home() {
 
     if (!nearby.length) return null;
 
-    // Sort so the most severe report drives the banner text
     const order  = { high: 0, moderate: 1 };
     const sorted = [...nearby].sort((a, b) =>
       (order[a.effective_urgency ?? a.urgency] ?? 1) -
@@ -204,6 +202,10 @@ export default function Home() {
 
   const proximityAlertData = proximityAlert();
 
+  // ── Firestore listener — only surface PENDING (non-resolved) reports ──
+  // Resolved reports are excluded from both the heatmap and proximity
+  // alerts so that "Mark as Resolved" in Reports.jsx is instantly reflected
+  // here without any additional state sharing or prop drilling.
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'reports'), (snapshot) => {
       const points  = [];
@@ -211,10 +213,14 @@ export default function Home() {
 
       snapshot.forEach(doc => {
         const d = doc.data();
+
+        // ── KEY FIX: skip resolved reports entirely ──────────────────
+        if (d.status === 'resolved') return;
+
         reports.push(d);
+
         if (d.location?.lat && d.location?.lng) {
-          // Use effective_urgency (NLP-adjusted) if available, else fall back
-          const urgency  = d.effective_urgency ?? d.urgency ?? 'low';
+          const urgency   = d.effective_urgency ?? d.urgency ?? 'low';
           const intensity = { high: 1.0, moderate: 0.55, low: 0.25 }[urgency] ?? 0.4;
           points.push([d.location.lat, d.location.lng, intensity]);
         }
@@ -228,12 +234,9 @@ export default function Home() {
   }, []);
 
   // ── Dynamic area vibe ──────────────────────────────────────────────────
-  // Calculates a risk score and dominant tags from reports within ~500m
-  // of the user. Falls back to all reports if coords unavailable.
   const areaVibe = useCallback(() => {
     if (!allReports.length) return null;
 
-    // Filter to reports within ~500m (roughly 0.005 degrees lat/lng)
     const RADIUS = 0.005;
     const nearby = coords
       ? allReports.filter(r =>
@@ -245,7 +248,6 @@ export default function Home() {
 
     const pool = nearby.length > 0 ? nearby : allReports;
 
-    // Risk score: weighted average of effective_urgency values (0–10 scale)
     const weights = { high: 10, moderate: 5.5, low: 2.5 };
     const total   = pool.reduce((sum, r) => {
       const u = r.effective_urgency ?? r.urgency ?? 'low';
@@ -253,7 +255,6 @@ export default function Home() {
     }, 0);
     const score = (total / pool.length).toFixed(1);
 
-    // Dominant categories — top 3 most reported
     const catCount = {};
     pool.forEach(r => {
       const cat = r.ai_category ?? r.category ?? 'other';
@@ -264,7 +265,6 @@ export default function Home() {
       .slice(0, 3)
       .map(([cat]) => cat);
 
-    // Overall urgency level for the score badge color
     const highCount = pool.filter(r =>
       (r.effective_urgency ?? r.urgency) === 'high').length;
     const modCount  = pool.filter(r =>
@@ -278,7 +278,6 @@ export default function Home() {
 
   const vibe = areaVibe();
 
-  // Human-readable category labels
   const CAT_LABELS = {
     poor_lighting:         'Poor lighting',
     loitering:             'Loitering',
@@ -289,7 +288,6 @@ export default function Home() {
     other:                 'Other',
   };
 
-  // Tag color by category type
   const CAT_TAG_COLOR = {
     poor_lighting:         'tag--amber',
     loitering:             'tag--red',
@@ -300,7 +298,6 @@ export default function Home() {
     other:                 'tag--gray',
   };
 
-  // Score badge class
   const SCORE_CLASS = {
     high:     'vibe-row__score--high',
     moderate: 'vibe-row__score--mid',
@@ -342,7 +339,6 @@ export default function Home() {
         <h1 className="home-logo">After<span>Hours</span></h1>
 
         <div className="header-right">
-          {/* show a subtle indicator if GPS is loading or errored */}
           {locationLoading && (
             <span className="location-status location-status--loading">
               Locating…
@@ -379,8 +375,6 @@ export default function Home() {
           <MapController mapRef={mapRef} />
         </MapContainer>
 
-        {/* Dynamic proximity alert banner — only shows when a real
-            high/moderate report is within the user's alert radius     */}
         {proximityAlertData && (
           <div
             className={`alert-banner alert-banner--${proximityAlertData.urgency}`}
@@ -418,7 +412,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Risk legend */}
         <div className="map-legend" aria-label="Risk level legend">
           <div className="map-legend__item">
             <span className="map-legend__dot map-legend__dot--high" />
