@@ -265,15 +265,11 @@ function ReportDetailSheet({ report, onClose, onResolved }) {
     if (e.target === e.currentTarget) handleClose();
   }
 
-  // ── Mark as Resolved ──────────────────────────────────────────────────
-  // Only the reporter can do this — the query already filters by
-  // reporter_id so only their own reports appear in this list.
   const handleResolve = useCallback(async () => {
     setResolving(true);
     setResolveErr('');
     try {
       await updateDoc(doc(db, 'reports', report.id), { status: 'resolved' });
-      // Notify parent so it can update selectedReport from fresh Firestore data
       onResolved(report.id);
       handleClose();
     } catch (err) {
@@ -334,7 +330,6 @@ function ReportDetailSheet({ report, onClose, onResolved }) {
 
         <div className="detail-body">
 
-          {/* When */}
           <div className="detail-section">
             <p className="detail-section__label">Date &amp; Time</p>
             <p className="detail-section__value">{fullDateTime(report.timestamp)}</p>
@@ -346,7 +341,6 @@ function ReportDetailSheet({ report, onClose, onResolved }) {
             )}
           </div>
 
-          {/* Where */}
           {report.location && (
             <div className="detail-section">
               <p className="detail-section__label">Location</p>
@@ -364,7 +358,6 @@ function ReportDetailSheet({ report, onClose, onResolved }) {
             </div>
           )}
 
-          {/* Description */}
           <div className="detail-section">
             <p className="detail-section__label">Your description</p>
             {report.description
@@ -373,7 +366,6 @@ function ReportDetailSheet({ report, onClose, onResolved }) {
             }
           </div>
 
-          {/* NLP Analysis */}
           <div className="detail-section">
             <p className="detail-section__label">AI Analysis</p>
             <div className="detail-nlp-card">
@@ -431,15 +423,10 @@ function ReportDetailSheet({ report, onClose, onResolved }) {
 
         </div>
 
-        {/* Footer */}
         <div className="detail-footer">
           {resolveErr && (
             <p className="detail-resolve-err" role="alert">⚠️ {resolveErr}</p>
           )}
-
-          {/* Mark as Resolved — only visible on pending reports.
-              Since this page only shows the current user's own reports
-              (queried by reporter_id), only the reporter sees this button. */}
           {isPending && (
             <button
               className={`detail-footer-btn detail-footer-btn--resolve
@@ -457,7 +444,6 @@ function ReportDetailSheet({ report, onClose, onResolved }) {
               )}
             </button>
           )}
-
           <button className="detail-footer-btn" onClick={handleClose}>
             {isPending ? 'Close' : 'Done'}
           </button>
@@ -477,7 +463,7 @@ export default function Reports() {
 
   const [reports,        setReports]        = useState([]);
   const [loading,        setLoading]        = useState(true);
-  const [fetchErr]       = useState('');
+  const [fetchErr]                          = useState('');
   const [selectedReport, setSelectedReport] = useState(null);
 
   const [active, setActive] = useState({
@@ -485,8 +471,6 @@ export default function Reports() {
   });
 
   // ── Real-time Firestore query ───────────────────────────────────────────
-  // Queries by reporter_id (new reports) AND uid (old reports submitted
-  // before the anonymous ID system was added). Merges and deduplicates.
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) { navigate('/login'); return; }
@@ -494,44 +478,36 @@ export default function Reports() {
     const reporterId = getReporterId();
     const uid        = user.uid;
 
-    // Query 1 — new reports stored with reporter_id
     const q1 = query(
       collection(db, 'reports'),
       where('reporter_id', '==', reporterId),
       orderBy('timestamp', 'desc'),
     );
 
-    // Query 2 — old reports stored with uid only
     const q2 = query(
       collection(db, 'reports'),
       where('uid', '==', uid),
       orderBy('timestamp', 'desc'),
     );
 
-    const seen    = new Set();
-    let   docs1   = [];
-    let   docs2   = [];
-    let   loaded1 = false;
-    let   loaded2 = false;
+    let docs1   = [];
+    let docs2   = [];
+    let loaded1 = false;
+    let loaded2 = false;
 
+    // ── FIX: fresh Map on every call — no shared mutable Set across snapshots
     function merge() {
-      // Combine, deduplicate by id, sort newest first
-      const all = [...docs1, ...docs2].filter(d => {
-        if (seen.has(d.id)) return false;
-        seen.add(d.id);
-        return true;
+      const byId = new Map();
+      [...docs1, ...docs2].forEach(d => {
+        if (!byId.has(d.id)) byId.set(d.id, d);
       });
-      seen.clear();
-      all.forEach(d => seen.add(d.id));
-      all.sort((a, b) => {
+      const all = [...byId.values()].sort((a, b) => {
         const ta = a.timestamp?.toDate?.() ?? new Date(a.timestamp ?? 0);
         const tb = b.timestamp?.toDate?.() ?? new Date(b.timestamp ?? 0);
         return tb - ta;
       });
-      setTimeout(() => {
-        setReports(all);
-        setLoading(false);
-      }, 0);
+      setReports(all);
+      setLoading(false);
     }
 
     const unsub1 = onSnapshot(q1,
@@ -564,31 +540,21 @@ export default function Reports() {
   }, [navigate]);
 
   // ── Keep selectedReport in sync with live Firestore data ───────────────
-  // ESLint fix: selectedReport.id is the only dependency we actually
-  // need — we look it up in the latest reports[] every time either changes.
-  // Using the full selectedReport object as a dep caused cascading renders.
   const selectedReportId = selectedReport?.id ?? null;
 
   useEffect(() => {
     if (!selectedReportId) return;
     const updated = reports.find(r => r.id === selectedReportId);
     if (updated) {
-      setTimeout(() => {
-        setSelectedReport(prev =>
-          JSON.stringify(prev) !== JSON.stringify(updated) ? updated : prev
-        );
-      }, 0);
+      setSelectedReport(prev =>
+        JSON.stringify(prev) !== JSON.stringify(updated) ? updated : prev
+      );
     }
   }, [reports, selectedReportId]);
 
   // ── Called by ReportDetailSheet after a successful resolve ─────────────
-  // Closes the sheet — Firestore onSnapshot will push the status update
-  // automatically so the card re-renders to "Resolved" on its own.
   const handleResolved = useCallback((resolvedId) => {
-    setSelectedReport(prev => {
-      if (prev?.id === resolvedId) return null;
-      return prev;
-    });
+    setSelectedReport(prev => (prev?.id === resolvedId ? null : prev));
   }, []);
 
   // ── Client-side filtering ──────────────────────────────────────────────
@@ -634,7 +600,6 @@ export default function Reports() {
 
       <main className="reports-scroll">
 
-        {/* Impact card */}
         <div className="impact-card">
           <div className="impact-card__title">
             Your impact <span className="impact-badge">All time</span>
@@ -663,7 +628,6 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* Filters */}
         <div className="filter-section">
           <div className="filter-section__header">
             <span className="filter-section__label">Filter</span>
@@ -688,7 +652,6 @@ export default function Reports() {
           ))}
         </div>
 
-        {/* Report list */}
         <div className="report-list">
           <div className="report-list__header">
             <span className="report-list__count">
@@ -744,7 +707,6 @@ export default function Reports() {
         <div style={{ height: '24px' }} aria-hidden="true" />
       </main>
 
-      {/* Bottom nav */}
       <nav className="bottom-nav" aria-label="Main navigation">
         {[
           { key: 'home',     label: 'Map',      icon: (a) => (
@@ -794,7 +756,6 @@ export default function Reports() {
         })}
       </nav>
 
-      {/* Detail sheet */}
       {selectedReport && (
         <ReportDetailSheet
           report={selectedReport}

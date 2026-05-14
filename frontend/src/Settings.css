@@ -256,6 +256,7 @@
 }
 
 /* ─── SUPPORT ROWS ──────────────────────────────────────────────────────── */
+/* No chevron arrow — just icon + label, clean tap target */
 .support-row {
   width: 100%;
   display: flex;
@@ -276,6 +277,9 @@
   font-weight: 500;
   color: var(--txt);
 }
+
+/* Hide the chevron SVG that Settings.jsx renders as the last child of support-row */
+.support-row svg:last-child { display: none; }
 
 /* ─── LOGOUT ROW ────────────────────────────────────────────────────────── */
 .logout-row {
@@ -340,10 +344,12 @@
 
 /* ═══════════════════════════════════════════════════════════════════════════
    HOTLINES SHEET
-   Class names match Settings.jsx: hotlines-overlay, hotlines-sheet, etc.
+   Class names match Settings.jsx exactly:
+   hotlines-overlay, hotlines-sheet, hotlines-handle, hotlines-header,
+   hotlines-title, hotlines-sub, hotlines-close, hotlines-body,
+   hotlines-notice, hotline-row, hotlines-footer, hotlines-close-btn
 ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Dimmed backdrop */
 .hotlines-overlay {
   position: fixed;
   inset: 0;
@@ -364,7 +370,6 @@
   -webkit-backdrop-filter: blur(6px);
 }
 
-/* The panel */
 .hotlines-sheet {
   width: 100%;
   max-width: 430px;
@@ -382,7 +387,6 @@
 }
 .hotlines-sheet--in { transform: translateY(0); }
 
-/* Drag handle */
 .hotlines-handle {
   width: 36px;
   height: 4px;
@@ -392,7 +396,6 @@
   flex-shrink: 0;
 }
 
-/* Header */
 .hotlines-header {
   display: flex;
   align-items: flex-start;
@@ -434,7 +437,6 @@
 }
 .hotlines-close:hover { background: var(--surface3); color: var(--txt); }
 
-/* Scrollable body */
 .hotlines-body {
   flex: 1;
   overflow-y: auto;
@@ -446,7 +448,6 @@
 }
 .hotlines-body::-webkit-scrollbar { display: none; }
 
-/* Warning notice */
 .hotlines-notice {
   font-size: 12px;
   color: var(--txt2);
@@ -459,7 +460,6 @@
 }
 .hotlines-notice strong { color: #ff6b4a; }
 
-/* Each hotline row */
 .hotline-row {
   display: flex;
   align-items: center;
@@ -512,7 +512,6 @@
   flex-shrink: 0;
 }
 
-/* Footer */
 .hotlines-footer {
   padding: 12px 18px max(18px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--border);
@@ -535,7 +534,7 @@
 .hotlines-close-btn:hover { background: var(--surface3); color: var(--txt); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   BUG REPORT SHEET (shared sheet pattern if used)
+   GENERIC SHEET (used by other sheets if needed)
 ═══════════════════════════════════════════════════════════════════════════ */
 .sheet-overlay {
   position: fixed;
@@ -727,10 +726,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .toggle__thumb  { transition: none; }
-  .hotlines-sheet { transition: none; }
+  .toggle__thumb    { transition: none; }
+  .hotlines-sheet   { transition: none; }
   .hotlines-overlay { transition: none; }
-  .sheet          { transition: none; }
-  .sheet-overlay  { transition: none; }
-  .sheet-spinner  { animation: none; }
+  .sheet            { transition: none; }
+  .sheet-overlay    { transition: none; }
+  .sheet-spinner    { animation: none; }
 }
