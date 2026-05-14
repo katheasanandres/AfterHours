@@ -197,10 +197,10 @@ function ReportCard({ report, onTap }) {
   return (
     <article
       className={`report-card report-card--${urgencyColor} report-card--tappable`}
-      onClick={() => onTap(report)}
+      onClick={() => onTap(report.id)}                                    // ← id only
       role="button"
       tabIndex={0}
-      onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onTap(report)}
+      onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onTap(report.id)}
       aria-label={`View details for ${catLabel} report`}
     >
       <div className="report-card__top">
@@ -461,10 +461,24 @@ export default function Reports() {
   const navigate = useNavigate();
   const { coords } = useLocation();
 
-  const [reports,        setReports]        = useState([]);
-  const [loading,        setLoading]        = useState(true);
-  const [fetchErr]                          = useState('');
-  const [selectedReport, setSelectedReport] = useState(null);
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchErr]            = useState('');
+
+  // ── FIX: store only the selected report's ID ───────────────────────────
+  // Previously: useState(null) held the full report object, and a useEffect
+  // called setSelectedReport(updated) synchronously inside its body —
+  // triggering ESLint react-hooks/set-state-in-effect (cascading renders).
+  //
+  // Now: selectedId is a plain string. activeReport is derived via useMemo,
+  // which recomputes whenever reports[] changes from Firestore. No sync
+  // useEffect needed — the detail sheet always reflects live data for free.
+  const [selectedId, setSelectedId] = useState(null);
+
+  const activeReport = useMemo(
+    () => reports.find(r => r.id === selectedId) ?? null,
+    [reports, selectedId],
+  );
 
   const [active, setActive] = useState({
     status: null, urgency: null, proximity: null, recency: null,
@@ -495,7 +509,6 @@ export default function Reports() {
     let loaded1 = false;
     let loaded2 = false;
 
-    // ── FIX: fresh Map on every call — no shared mutable Set across snapshots
     function merge() {
       const byId = new Map();
       [...docs1, ...docs2].forEach(d => {
@@ -520,7 +533,7 @@ export default function Reports() {
         console.error('Query 1 error:', err);
         loaded1 = true;
         if (loaded1 && loaded2) merge();
-      }
+      },
     );
 
     const unsub2 = onSnapshot(q2,
@@ -533,28 +546,15 @@ export default function Reports() {
         console.error('Query 2 error:', err);
         loaded2 = true;
         if (loaded1 && loaded2) merge();
-      }
+      },
     );
 
     return () => { unsub1(); unsub2(); };
   }, [navigate]);
 
-  // ── Keep selectedReport in sync with live Firestore data ───────────────
-  const selectedReportId = selectedReport?.id ?? null;
-
-  useEffect(() => {
-    if (!selectedReportId) return;
-    const updated = reports.find(r => r.id === selectedReportId);
-    if (updated) {
-      setSelectedReport(prev =>
-        JSON.stringify(prev) !== JSON.stringify(updated) ? updated : prev
-      );
-    }
-  }, [reports, selectedReportId]);
-
-  // ── Called by ReportDetailSheet after a successful resolve ─────────────
+  // ── Called by ReportDetailSheet after a successful Firestore resolve ────
   const handleResolved = useCallback((resolvedId) => {
-    setSelectedReport(prev => (prev?.id === resolvedId ? null : prev));
+    setSelectedId(prev => (prev === resolvedId ? null : prev));
   }, []);
 
   // ── Client-side filtering ──────────────────────────────────────────────
@@ -699,7 +699,7 @@ export default function Reports() {
             <ReportCard
               key={report.id}
               report={report}
-              onTap={setSelectedReport}
+              onTap={setSelectedId}   // ← was setSelectedReport(report)
             />
           ))}
         </div>
@@ -756,10 +756,11 @@ export default function Reports() {
         })}
       </nav>
 
-      {selectedReport && (
+      {/* activeReport is derived via useMemo — never set directly in an effect */}
+      {activeReport && (
         <ReportDetailSheet
-          report={selectedReport}
-          onClose={() => setSelectedReport(null)}
+          report={activeReport}
+          onClose={() => setSelectedId(null)}
           onResolved={handleResolved}
         />
       )}
