@@ -4,8 +4,9 @@ import { db } from './firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet.heat';
 import 'leaflet/dist/leaflet.css';
+// leaflet.heat MUST be imported after leaflet — it attaches itself to the L global
+import 'leaflet.heat';
 import { useLocation } from './hooks/UseLocation';
 import { useSettings } from './hooks/UseSettings';
 import ReportModal from './ReportModal';
@@ -13,15 +14,19 @@ import './Home.css';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MAP SUB-COMPONENTS
-   These live outside Home() so they don't re-mount on every render.
 ═══════════════════════════════════════════════════════════════════════════ */
 
-/** Renders the risk heatmap layer inside the Leaflet map context */
 function HeatmapLayer({ points }) {
   const map = useMap();
 
   useEffect(() => {
     if (!map || !points?.length) return;
+
+    // Guard: if leaflet.heat still didn't attach (e.g. SSR), bail silently
+    if (typeof L.heatLayer !== 'function') {
+      console.warn('leaflet.heat not loaded — heatmap unavailable');
+      return;
+    }
 
     const layer = L.heatLayer(points, {
       radius:  28,
@@ -29,9 +34,9 @@ function HeatmapLayer({ points }) {
       maxZoom: 17,
       gradient: {
         0.0: 'rgba(34,197,94,0)',
-        0.2: '#22C55E',   // green  — low risk
-        0.6: '#F59E0B',   // amber  — moderate
-        1.0: '#E03E2D',   // red    — high risk
+        0.2: '#22C55E',   // lowered from 0.3 so low-intensity points are visible
+        0.6: '#F59E0B',
+        1.0: '#E03E2D',
       },
     }).addTo(map);
 
@@ -41,7 +46,6 @@ function HeatmapLayer({ points }) {
   return null;
 }
 
-/** Blinking blue dot at the user's real GPS position */
 function UserDot({ position }) {
   const map = useMap();
 
@@ -62,10 +66,6 @@ function UserDot({ position }) {
   return null;
 }
 
-/**
- * Exposes the Leaflet map instance to the parent via a ref.
- * Parent calls mapRef.current.flyTo([lat, lng]) to re-center.
- */
 function MapController({ mapRef }) {
   const map = useMap();
   useEffect(() => { mapRef.current = map; }, [map, mapRef]);
@@ -124,13 +124,10 @@ export default function Home() {
   const [currentTime, setCurrentTime] = useState('');
   const [reportOpen,  setReportOpen]  = useState(false);
 
-  // Ref to the Leaflet map instance — used by the re-center button
   const mapRef = useRef(null);
 
-  // ── Settings from Firestore ───────────────────────────────────────────
   const { settings } = useSettings();
 
-  // ── Real GPS coords — respects locationEnabled setting ───────────────
   const { coords, error: locationError, loading: locationLoading } =
     useLocation(settings.locationEnabled);
 
@@ -138,21 +135,18 @@ export default function Home() {
     ? [coords.lat, coords.lng]
     : [14.8348, 120.2821];
 
-  // ── Real-time heatmap data from Firestore ─────────────────────────────
   const [heatPoints, setHeatPoints] = useState([]);
-  const [allReports, setAllReports] = useState([]); // raw docs for vibe calc
+  const [allReports, setAllReports] = useState([]);
 
-  // ── Proximity alert — driven by real Firestore data + live GPS ────────
   const [alertDismissed, setAlertDismissed] = useState(false);
 
-  // Reset dismissal when user moves significantly (so alert can refire)
   const prevCoordsRef = useRef(null);
   useEffect(() => {
     if (!coords) return;
     const prev = prevCoordsRef.current;
     if (prev) {
       const moved = Math.abs(coords.lat - prev.lat) + Math.abs(coords.lng - prev.lng);
-      if (moved > 0.002) setAlertDismissed(false); // ~200m movement resets
+      if (moved > 0.002) setAlertDismissed(false);
     }
     prevCoordsRef.current = coords;
   }, [coords]);
@@ -163,7 +157,6 @@ export default function Home() {
     if (alertDismissed)     return null;
     if (!allReports.length) return null;
 
-    // Convert alertRadius (metres) → degrees (1° ≈ 111,000 m)
     const radiusDeg = (settings.alertRadius ?? 250) / 111000;
 
     const nearby = allReports.filter(r => {
@@ -202,10 +195,7 @@ export default function Home() {
 
   const proximityAlertData = proximityAlert();
 
-  // ── Firestore listener — only surface PENDING (non-resolved) reports ──
-  // Resolved reports are excluded from both the heatmap and proximity
-  // alerts so that "Mark as Resolved" in Reports.jsx is instantly reflected
-  // here without any additional state sharing or prop drilling.
+  // ── Firestore listener — only pending reports feed the heatmap ─────────
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'reports'), (snapshot) => {
       const points  = [];
@@ -214,13 +204,14 @@ export default function Home() {
       snapshot.forEach(doc => {
         const d = doc.data();
 
-        // ── KEY FIX: skip resolved reports entirely ──────────────────
+        // Resolved reports are excluded from heatmap and proximity alerts
         if (d.status === 'resolved') return;
 
         reports.push(d);
 
         if (d.location?.lat && d.location?.lng) {
           const urgency   = d.effective_urgency ?? d.urgency ?? 'low';
+          // Bumped low intensity from 0.25 → 0.35 so it clears the 0.2 gradient threshold
           const intensity = { high: 1.0, moderate: 0.55, low: 0.35 }[urgency] ?? 0.4;
           points.push([d.location.lat, d.location.lng, intensity]);
         }
@@ -304,14 +295,12 @@ export default function Home() {
     low:      'vibe-row__score--safe',
   };
 
-  // ── Re-center button ───────────────────────────────────────────────────
   function handleRecenter() {
     if (mapRef.current && coords) {
       mapRef.current.flyTo([coords.lat, coords.lng], 16, { duration: 1.2 });
     }
   }
 
-  // ── Live clock ─────────────────────────────────────────────────────────
   useEffect(() => {
     function tick() {
       const now = new Date();
@@ -324,32 +313,25 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
-  // ── Navigation handler ─────────────────────────────────────────────────
   function handleNav(key) {
     setActiveNav(key);
     if (key !== 'map') navigate(`/${key}`);
   }
 
-  /* ── JSX ── */
   return (
     <div className="home-root">
 
-      {/* ── HEADER ──────────────────────────────────────────────────────── */}
       <header className="home-header">
         <h1 className="home-logo">After<span>Hours</span></h1>
-
         <div className="header-right">
           {locationLoading && (
-            <span className="location-status location-status--loading">
-              Locating…
-            </span>
+            <span className="location-status location-status--loading">Locating…</span>
           )}
           {locationError && !locationLoading && (
             <span className="location-status location-status--error" title={locationError}>
               📍 GPS off
             </span>
           )}
-
           <div className="time-chip">
             <span className="time-chip__dot" aria-hidden="true" />
             <span>{currentTime}</span>
@@ -357,7 +339,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ── MAP AREA ────────────────────────────────────────────────────── */}
       <div className="map-area">
         <MapContainer
           center={mapCenter}
@@ -397,9 +378,7 @@ export default function Home() {
               </strong>
               <p>
                 {proximityAlertData.catLabel}
-                {proximityAlertData.count > 1
-                  ? ` · ${proximityAlertData.count} reports`
-                  : ''}
+                {proximityAlertData.count > 1 ? ` · ${proximityAlertData.count} reports` : ''}
               </p>
             </div>
             <button
@@ -428,7 +407,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── BOTTOM SHEET ────────────────────────────────────────────────── */}
       <div className="bottom-sheet">
         <div className="bottom-sheet__handle" aria-hidden="true" />
 
@@ -439,9 +417,7 @@ export default function Home() {
               {vibe.score} / 10 risk
             </span>
           ) : (
-            <span className="vibe-row__score vibe-row__score--empty">
-              No reports yet
-            </span>
+            <span className="vibe-row__score vibe-row__score--empty">No reports yet</span>
           )}
         </div>
 
@@ -484,7 +460,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── BOTTOM NAV ──────────────────────────────────────────────────── */}
       <nav className="bottom-nav" aria-label="Main navigation">
         {[
           { key: 'map',      label: 'Map',      Icon: NavIconMap      },
@@ -504,7 +479,6 @@ export default function Home() {
         ))}
       </nav>
 
-      {/* ── REPORT MODAL ────────────────────────────────────────────────── */}
       {reportOpen && (
         <ReportModal
           onClose={() => setReportOpen(false)}
