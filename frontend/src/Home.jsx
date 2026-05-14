@@ -29,7 +29,7 @@ function HeatmapLayer({ points }) {
       maxZoom: 17,
       gradient: {
         0.0: 'rgba(34,197,94,0)',
-        0.3: '#22C55E',   // green  — low risk
+        0.2: '#22C55E',   // green  — low risk
         0.6: '#F59E0B',   // amber  — moderate
         1.0: '#E03E2D',   // red    — high risk
       },
@@ -221,7 +221,7 @@ export default function Home() {
 
         if (d.location?.lat && d.location?.lng) {
           const urgency   = d.effective_urgency ?? d.urgency ?? 'low';
-          const intensity = { high: 1.0, moderate: 0.55, low: 0.25 }[urgency] ?? 0.4;
+          const intensity = { high: 1.0, moderate: 0.55, low: 0.35 }[urgency] ?? 0.4;
           points.push([d.location.lat, d.location.lng, intensity]);
         }
       });
